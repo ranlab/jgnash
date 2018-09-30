@@ -29,11 +29,8 @@ import com.lowagie.text.pdf.PdfContentByte;
 import com.lowagie.text.pdf.PdfPCell;
 import com.lowagie.text.pdf.PdfPCellEvent;
 import com.lowagie.text.pdf.PdfPTable;
-import jgnash.util.LogUtil;
 
 import java.awt.Color;
-
-import java.io.IOException;
 
 /**
  * Handles automatic truncation of text
@@ -50,17 +47,13 @@ public class TruncateContentPdfCellEvent implements PdfPCellEvent {
 
     private final Color textColor;
 
-    public TruncateContentPdfCellEvent(final String name, final String encoding, final boolean embedded,
-                                       final Color color, final float size, final String content) {
+    public TruncateContentPdfCellEvent(final BaseFont baseFont, final Color textColor, final float fontSize,
+                                       final String content) {
         this.content = content;
-        this.fontSize = size;
-        this.textColor = color;
+        this.fontSize = fontSize;
+        this.textColor = textColor;
 
-        try {
-            bf = BaseFont.createFont(name, encoding, embedded);
-        } catch (IOException e) {
-            LogUtil.logSevere(TruncateContentPdfCellEvent.class, e);
-        }
+        bf = baseFont;
     }
 
     /**

@@ -7,6 +7,7 @@ import com.lowagie.text.pdf.BaseFont;
 import com.lowagie.text.pdf.PdfPCell;
 import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
+import jgnash.report.pdf.ReportFooterHelper;
 import jgnash.report.pdf.Style;
 import jgnash.report.pdf.TruncateContentPdfCellEvent;
 import jgnash.util.LogUtil;
@@ -31,14 +32,18 @@ class TableTest {
 
         try {
 
+            final BaseFont footerFont = BaseFont.createFont(BaseFont.HELVETICA_OBLIQUE, BaseFont.WINANSI, BaseFont.EMBEDDED);
+
             tempPath = Files.createTempFile("test", ".pdf");
             System.out.println(tempPath);
 
-            Document document = new Document();
-            document.setPageSize(PageSize.LETTER.rotate());
+            Document document = new Document(PageSize.LETTER.rotate());
 
+            // margin in points
+            document.setMargins(36f, 36f, 36f, 36f);
 
-            PdfWriter.getInstance(document, Files.newOutputStream(tempPath));
+            PdfWriter writer = PdfWriter.getInstance(document, Files.newOutputStream(tempPath));
+            writer.setPageEvent(new ReportFooterHelper(36f, footerFont, Color.DARK_GRAY, 7));
 
             document.open();
 
@@ -47,8 +52,6 @@ class TableTest {
 
             //step 5
             document.close();
-
-            System.out.println("PDF Created!");
 
             assertTrue(Files.exists(tempPath));
 
@@ -61,7 +64,7 @@ class TableTest {
         }
     }
 
-    PdfPTable createTable() throws DocumentException {
+    PdfPTable createTable() throws DocumentException, IOException {
 
         // create 6 column table
         PdfPTable table = new PdfPTable(9);
@@ -114,13 +117,14 @@ class TableTest {
     }
 
     // create cells
-    private static PdfPCell createHeaderCell(String text) {
+    private static PdfPCell createHeaderCell(String text) throws IOException {
+
+        BaseFont baseFont = BaseFont.createFont(BaseFont.HELVETICA_BOLD, BaseFont.WINANSI, BaseFont.EMBEDDED);
 
         // create cell
 
         PdfPCell cell = new PdfPCell();
-        cell.setCellEvent(new TruncateContentPdfCellEvent(BaseFont.HELVETICA_BOLD, BaseFont.WINANSI, BaseFont.NOT_EMBEDDED,
-                Color.WHITE, 8, text));
+        cell.setCellEvent(new TruncateContentPdfCellEvent(baseFont, Color.WHITE, 8, text));
 
 
         // set style
@@ -130,11 +134,13 @@ class TableTest {
     }
 
     // create cells
-    private static PdfPCell createValueCell(String text) {
+    private static PdfPCell createValueCell(String text) throws IOException {
+
+        BaseFont baseFont = BaseFont.createFont(BaseFont.HELVETICA, BaseFont.WINANSI, BaseFont.EMBEDDED);
+
         // create cell
         PdfPCell cell = new PdfPCell();
-        cell.setCellEvent(new TruncateContentPdfCellEvent(BaseFont.HELVETICA, BaseFont.WINANSI, BaseFont.NOT_EMBEDDED,
-                Color.BLACK, 8, text));
+        cell.setCellEvent(new TruncateContentPdfCellEvent(baseFont, Color.BLACK, 8, text));
 
         // set style
         Style.valueCellStyle(cell);
@@ -142,11 +148,13 @@ class TableTest {
     }
 
     // create cells
-    private static PdfPCell createNumericValueCell(String text) {
+    private static PdfPCell createNumericValueCell(String text) throws IOException {
+
+        BaseFont baseFont = BaseFont.createFont(BaseFont.HELVETICA, BaseFont.WINANSI, BaseFont.EMBEDDED);
+
         // create cell
         PdfPCell cell = new PdfPCell();
-        cell.setCellEvent(new TruncateContentPdfCellEvent(BaseFont.HELVETICA, BaseFont.WINANSI, BaseFont.NOT_EMBEDDED,
-                Color.BLACK, 8, text));
+        cell.setCellEvent(new TruncateContentPdfCellEvent(baseFont, Color.BLACK, 8, text));
 
         // set style
         Style.numericValueCellStyle(cell);
