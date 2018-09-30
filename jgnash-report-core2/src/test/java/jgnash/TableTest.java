@@ -66,6 +66,8 @@ class TableTest {
         // create 6 column table
         PdfPTable table = new PdfPTable(9);
 
+        table.setHeaderRows(1);     // repeats the header on each page
+
         // set the width of the table to 100% of page
         table.setWidthPercentage(100);
 
@@ -94,16 +96,19 @@ class TableTest {
         table.addCell(createNumericValueCell("46.61"));
         table.addCell(createNumericValueCell("255.67"));
 
-        // table row
-        table.addCell(createValueCell("06/21/03"));
-        table.addCell(createValueCell("101"));
-        table.addCell(createValueCell("XYZ Corp"));
-        table.addCell(createValueCell("Pay check"));
-        table.addCell(createValueCell("Income"));
-        table.addCell(createValueCell("R"));
-        table.addCell(createNumericValueCell("850.00"));
-        table.addCell(createNumericValueCell(" "));
-        table.addCell(createNumericValueCell("1105.67"));
+        for (int i = 0; i < 50; i++) {
+
+            // table row
+            table.addCell(createValueCell("06/21/03"));
+            table.addCell(createValueCell("101"));
+            table.addCell(createValueCell("XYZ Corp"));
+            table.addCell(createValueCell("Pay check"));
+            table.addCell(createValueCell("Income"));
+            table.addCell(createValueCell("R"));
+            table.addCell(createNumericValueCell("850.00"));
+            table.addCell(createNumericValueCell(" "));
+            table.addCell(createNumericValueCell("1105.67"));
+        }
 
         return table;
     }
@@ -112,9 +117,10 @@ class TableTest {
     private static PdfPCell createHeaderCell(String text) {
 
         // create cell
+
         PdfPCell cell = new PdfPCell();
         cell.setCellEvent(new TruncateContentPdfCellEvent(BaseFont.HELVETICA_BOLD, BaseFont.WINANSI, BaseFont.NOT_EMBEDDED,
-                Color.DARK_GRAY, 8, text));
+                Color.WHITE, 8, text));
 
 
         // set style

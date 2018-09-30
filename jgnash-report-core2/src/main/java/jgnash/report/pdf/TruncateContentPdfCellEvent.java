@@ -76,6 +76,7 @@ public class TruncateContentPdfCellEvent implements PdfPCellEvent {
     public void cellLayout(final PdfPCell cell, final Rectangle position, final PdfContentByte[] canvases) {
 
         float horizontalShift = 0;  // used to right align the cell content
+        float verticalShift = 0;    // used to vertically align the cell content
 
         try {
             // available cell width factoring in margins
@@ -104,10 +105,16 @@ public class TruncateContentPdfCellEvent implements PdfPCellEvent {
                 horizontalShift = availableWidth - bf.getWidthPoint(content, fontSize) - cell.getEffectivePaddingRight();
             }
 
+            // calculate the vertical shift to center vertically
+            if (cell.getVerticalAlignment() == Element.ALIGN_MIDDLE) {
+                final float availableHeight = position.getTop() - position.getBottom() - cell.getPaddingTop() - cell.getPaddingBottom();
+                verticalShift = (float) Math.floor(availableHeight - bf.getAscentPoint(content, fontSize)) / 2;
+            }
+
             ct.setSimpleColumn(position.getLeft() + cell.getPaddingLeft() + horizontalShift,
-                    position.getBottom() + cell.getEffectivePaddingBottom(),
+                    position.getBottom() + cell.getEffectivePaddingBottom() - verticalShift,
                     position.getRight() - cell.getEffectivePaddingRight(),
-                    position.getTop() - cell.getPaddingTop());
+                    position.getTop() - cell.getPaddingTop() + verticalShift);
 
             ct.addElement(new Paragraph(content, font));
             ct.go();
