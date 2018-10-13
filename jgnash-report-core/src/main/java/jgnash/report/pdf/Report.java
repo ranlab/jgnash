@@ -17,7 +17,6 @@
  */
 package jgnash.report.pdf;
 
-import jgnash.engine.CurrencyNode;
 import jgnash.report.table.AbstractReportTableModel;
 import jgnash.report.table.ColumnStyle;
 import jgnash.text.CommodityFormat;
@@ -54,6 +53,8 @@ import static jgnash.util.LogUtil.logSevere;
 @SuppressWarnings("WeakerAccess")
 public class Report {
 
+    private String ellipsis = "...";
+
     private PDRectangle pageSize;
 
     private float tableFontSize;
@@ -73,8 +74,6 @@ public class Report {
     final Color headerBackground = Color.DARK_GRAY;
 
     final Color headerTextColor = Color.WHITE;
-
-    private CurrencyNode currencyNode;
 
     public Report() {
         setPageSize(PDRectangle.LETTER, false);
@@ -128,7 +127,7 @@ public class Report {
         return headerFont;
     }
 
-    public void setHeaderFont(PDFont headerFont) {
+    public void setHeaderFont(final PDFont headerFont) {
         this.headerFont = headerFont;
     }
 
@@ -136,7 +135,7 @@ public class Report {
         return cellPadding;
     }
 
-    public void setCellPadding(float cellPadding) {
+    public void setCellPadding(final float cellPadding) {
         this.cellPadding = cellPadding;
     }
 
@@ -146,6 +145,22 @@ public class Report {
 
     public void setMargin(float margin) {
         this.margin = margin;
+    }
+
+    public float getFooterFontSize() {
+        return footerFontSize;
+    }
+
+    public void setFooterFontSize(final float footerFontSize) {
+        this.footerFontSize = footerFontSize;
+    }
+
+    public PDFont getFooterFont() {
+        return footerFont;
+    }
+
+    public void setFooterFont(final PDFont footerFont) {
+        this.footerFont = footerFont;
     }
 
     public void addTable(final PDDocument doc, final AbstractReportTableModel table) throws IOException {
@@ -181,10 +196,12 @@ public class Report {
         }
     }
 
-    private String formatValue(final Object value, final ColumnStyle columnStyle) {
+    private String formatValue(final Object value, final int column, final AbstractReportTableModel tableModel) {
         if (value == null) {
             return " ";
         }
+
+        final ColumnStyle columnStyle = tableModel.getColumnStyle(column);
 
         switch (columnStyle) {
             case TIMESTAMP:
@@ -194,18 +211,34 @@ public class Report {
                 final DateTimeFormatter dateFormatter = DateUtils.getShortDateFormatter();
                 return dateFormatter.format((LocalDate) value);
             case SHORT_AMOUNT:
-                final NumberFormat shortNumberFormat = CommodityFormat.getShortNumberFormat(getCurrencyNode());
+                final NumberFormat shortNumberFormat = CommodityFormat.getShortNumberFormat(tableModel.getCurrency());
                 return shortNumberFormat.format(value);
             case BALANCE:
             case BALANCE_WITH_SUM:
             case BALANCE_WITH_SUM_AND_GLOBAL:
             case AMOUNT_SUM:
-                final NumberFormat numberFormat = CommodityFormat.getFullNumberFormat(getCurrencyNode());
+                final NumberFormat numberFormat = CommodityFormat.getFullNumberFormat(tableModel.getCurrency());
                 return numberFormat.format(value);
             default:
                 return value.toString();
         }
     }
+
+    private boolean rightAlign(final int column, final AbstractReportTableModel tableModel) {
+        final ColumnStyle columnStyle = tableModel.getColumnStyle(column);
+
+        switch (columnStyle) {
+            case SHORT_AMOUNT:
+            case BALANCE:
+            case BALANCE_WITH_SUM:
+            case BALANCE_WITH_SUM_AND_GLOBAL:
+            case AMOUNT_SUM:
+                return true;
+            default:
+                return false;
+        }
+    }
+
 
     private void addTableSection(final AbstractReportTableModel table, final PDPageContentStream contentStream,
                                  final int startRow, final int rows) throws IOException {
@@ -249,7 +282,17 @@ public class Report {
                 final Object value = table.getValueAt(row, j);
 
                 if (value != null) {
-                    drawText(contentStream, xPos, yPos, formatValue(table.getValueAt(row, j), table.getColumnStyle(j)));
+                    float shift = 0;
+                    float availWidth = columnWidth - getCellPadding() * 2;
+
+                    final String text = truncateText(formatValue(table.getValueAt(row, j), j, table), availWidth,
+                            getTableFont(), getTableFontSize());
+
+                    if (rightAlign(j, table)) {
+                        shift = availWidth - getStringWidth(text, getTableFont(), getTableFontSize());
+                    }
+
+                    drawText(contentStream, xPos + shift, yPos, text);
                 }
 
                 xPos += columnWidth;
@@ -316,7 +359,7 @@ public class Report {
             PDPage page = doc.getPage(i);
 
             final String pageText = String.format("Page %s of %s", i + 1, pageCount);
-            final float width = getStringWidth(getFooterFont(), pageText, getFooterFontSize());
+            final float width = getStringWidth(pageText, getFooterFont(), getFooterFontSize());
 
             try (final PDPageContentStream contentStream = new PDPageContentStream(doc, page, PDPageContentStream.AppendMode.APPEND, true)) {
                 contentStream.setFont(getFooterFont(), getFooterFontSize());
@@ -329,37 +372,42 @@ public class Report {
         }
     }
 
+    private String truncateText(String text, float availWidth, final PDFont font, final float fontSize) throws IOException {
+        if (text != null) {
+            String content = text;
+
+            float width = getStringWidth(content, font, fontSize);
+
+            // munch down the end of the string until it fits
+            if (width > availWidth) {
+                while (getStringWidth(content + getEllipsis(), font, fontSize) > availWidth) {
+                    content = content.substring(0, content.length() - 1);
+                }
+
+                content = content + getEllipsis();
+            }
+
+            return content;
+        }
+
+        return null;
+    }
+
     private PDPage createPage() {
         PDPage page = new PDPage();
         page.setMediaBox(getPageSize());
         return page;
     }
 
-    private static float getStringWidth(final PDFont font, final String text, final float fontSize) throws IOException {
+    private static float getStringWidth(final String text, final PDFont font, final float fontSize) throws IOException {
         return font.getStringWidth(text) / 1000 * fontSize;
     }
 
-    public float getFooterFontSize() {
-        return footerFontSize;
+    public String getEllipsis() {
+        return ellipsis;
     }
 
-    public void setFooterFontSize(float footerFontSize) {
-        this.footerFontSize = footerFontSize;
-    }
-
-    public PDFont getFooterFont() {
-        return footerFont;
-    }
-
-    public void setFooterFont(PDFont footerFont) {
-        this.footerFont = footerFont;
-    }
-
-    public CurrencyNode getCurrencyNode() {
-        return currencyNode;
-    }
-
-    public void setCurrencyNode(CurrencyNode currencyNode) {
-        this.currencyNode = currencyNode;
+    public void setEllipsis(String ellipsis) {
+        this.ellipsis = ellipsis;
     }
 }

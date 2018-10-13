@@ -100,7 +100,7 @@ class PDFBoxTableTest {
             boolean landscape = true;
 
             final Report report = new Report();
-            report.setTableFont(PDType1Font.HELVETICA);
+            report.setTableFont(PDType1Font.COURIER);
             report.setHeaderFont(PDType1Font.HELVETICA_BOLD);
             report.setCellPadding(padding);
             report.setTableFontSize(9);
@@ -108,7 +108,7 @@ class PDFBoxTableTest {
             report.setMargin(32);
             report.setFooterFont(PDType1Font.TIMES_ITALIC);
             report.setFooterFontSize(8);
-            report.setCurrencyNode(currencyNode);
+            report.setEllipsis("…");
 
             report.addTable(doc, new TestReport());
             report.addFooter(doc);
@@ -167,11 +167,7 @@ class PDFBoxTableTest {
         final CurrencyNode currencyNode;
 
         TestReport() {
-            currencyNode = new CurrencyNode();
-            currencyNode.setDescription("USD");
-            currencyNode.setScale((byte) 2);
-            currencyNode.setPrefix("$");
-            currencyNode.setSymbol("USD");
+            currencyNode = DefaultCurrencies.getDefault();
         }
 
 
