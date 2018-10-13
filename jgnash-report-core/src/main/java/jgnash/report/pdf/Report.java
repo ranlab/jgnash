@@ -26,6 +26,8 @@ import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDFont;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 
+import java.awt.Color;
+
 import java.io.IOException;
 
 import static jgnash.util.LogUtil.logSevere;
@@ -52,6 +54,10 @@ public class Report {
     private float margin;
 
     private float cellPadding = 2;
+
+    final Color headerBackground = Color.DARK_GRAY;
+
+    final Color headerTextColor = Color.WHITE;
 
     public Report() {
         pageSize = PDRectangle.LETTER;
@@ -170,6 +176,11 @@ public class Report {
         float columnWidth = getAvailableWidth() / table.getColumnCount();  // TODO, calculate/pack column widths
 
         // add the header
+        contentStream.setNonStrokingColor(headerBackground);
+        fillRect(contentStream, getMargin(), yTop - getTableRowHeight(), getAvailableWidth(), getTableRowHeight());
+
+        contentStream.setNonStrokingColor(headerTextColor);
+
         for (int i = 0; i < table.getColumnCount(); i++) {
             contentStream.beginText();
             contentStream.newLineAtOffset(xPos, yPos);
@@ -181,6 +192,7 @@ public class Report {
 
         // add the rows
         contentStream.setFont(getTableFont(), getTableFontSize());
+        contentStream.setNonStrokingColor(Color.BLACK);
 
         for (int i = 0; i < rows; i++) {
             int row = i + startRow;
@@ -228,6 +240,13 @@ public class Report {
         contentStream.moveTo(xStart, yStart);
         contentStream.lineTo(xEnd, yEnd);
         contentStream.stroke();
+    }
+
+    private void fillRect(final PDPageContentStream contentStream, final float x, final float y, final float width,
+                          final float height) throws IOException
+    {
+        contentStream.addRect(x, y, width, height);
+        contentStream.fill();
     }
 
     private float getAvailableHeight() {
