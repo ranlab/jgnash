@@ -157,7 +157,9 @@ public class Report {
     private void addTableSection(final AbstractReportTableModel table, final PDPageContentStream contentStream,
                                  final int startRow, final int rows) throws IOException {
 
-        float yPos = getPageSize().getHeight() - getMargin();
+        float yTop = getPageSize().getHeight() - getMargin();
+
+        float yPos = yTop;
         float xPos = getMargin() + getCellPadding();
 
         yPos = yPos - (getTableRowHeight() / 2)
@@ -167,7 +169,7 @@ public class Report {
 
         float columnWidth = getAvailableWidth() / table.getColumnCount();  // TODO, calculate/pack column widths
 
-        // draw header
+        // add the header
         for (int i = 0; i < table.getColumnCount(); i++) {
             contentStream.beginText();
             contentStream.newLineAtOffset(xPos, yPos);
@@ -177,12 +179,12 @@ public class Report {
             xPos += columnWidth;
         }
 
-        // draw rows
+        // add the rows
         contentStream.setFont(getTableFont(), getTableFontSize());
 
         for (int i = 0; i < rows; i++) {
-
             int row = i + startRow;
+
             xPos = getMargin() + getCellPadding();
             yPos -= getTableRowHeight();
 
@@ -201,7 +203,31 @@ public class Report {
             }
         }
 
+        // add row lines
+        yPos = yTop;
+        xPos = getMargin();
+        for (int i = 0; i <= rows + 1; i++) {
+            drawLine(contentStream, xPos, yPos, getAvailableWidth() + getMargin(), yPos);
+            yPos -= getTableRowHeight();
+        }
+
+        // add column lines
+        yPos = yTop;
+        xPos = getMargin();
+        for (int i = 0; i < table.getColumnCount() + 1; i++) {
+            drawLine(contentStream, xPos, yPos, xPos, yPos - getTableRowHeight() * (rows + 1));
+            xPos += columnWidth;
+        }
+
         contentStream.close();
+    }
+
+
+    private void drawLine(final PDPageContentStream contentStream, final float xStart, final float yStart,
+                          final float xEnd, final float yEnd) throws IOException {
+        contentStream.moveTo(xStart, yStart);
+        contentStream.lineTo(xEnd, yEnd);
+        contentStream.stroke();
     }
 
     private float getAvailableHeight() {
@@ -215,6 +241,9 @@ public class Report {
     private PDPage createPage() {
         PDPage page = new PDPage();
         page.setMediaBox(getPageSize());
+
+
+        // TODO: Add page footer here
         return page;
     }
 }
