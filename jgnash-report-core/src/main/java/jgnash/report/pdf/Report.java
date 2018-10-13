@@ -17,8 +17,13 @@
  */
 package jgnash.report.pdf;
 
+import jgnash.engine.CurrencyNode;
 import jgnash.report.table.AbstractReportTableModel;
+import jgnash.report.table.ColumnStyle;
+import jgnash.text.CommodityFormat;
+import jgnash.time.DateUtils;
 import jgnash.util.NotNull;
+
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
@@ -29,6 +34,8 @@ import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import java.awt.Color;
 
 import java.io.IOException;
+import java.text.NumberFormat;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
@@ -66,6 +73,8 @@ public class Report {
     final Color headerBackground = Color.DARK_GRAY;
 
     final Color headerTextColor = Color.WHITE;
+
+    private CurrencyNode currencyNode;
 
     public Report() {
         setPageSize(PDRectangle.LETTER, false);
@@ -172,6 +181,32 @@ public class Report {
         }
     }
 
+    private String formatValue(final Object value, final ColumnStyle columnStyle) {
+        if (value == null) {
+            return " ";
+        }
+
+        switch (columnStyle) {
+            case TIMESTAMP:
+                final DateTimeFormatter dateTimeFormatter = DateUtils.getShortDateTimeFormatter();
+                return dateTimeFormatter.format((LocalDateTime) value);
+            case SHORT_DATE:
+                final DateTimeFormatter dateFormatter = DateUtils.getShortDateFormatter();
+                return dateFormatter.format((LocalDate) value);
+            case SHORT_AMOUNT:
+                final NumberFormat shortNumberFormat = CommodityFormat.getShortNumberFormat(getCurrencyNode());
+                return shortNumberFormat.format(value);
+            case BALANCE:
+            case BALANCE_WITH_SUM:
+            case BALANCE_WITH_SUM_AND_GLOBAL:
+            case AMOUNT_SUM:
+                final NumberFormat numberFormat = CommodityFormat.getFullNumberFormat(getCurrencyNode());
+                return numberFormat.format(value);
+            default:
+                return value.toString();
+        }
+    }
+
     private void addTableSection(final AbstractReportTableModel table, final PDPageContentStream contentStream,
                                  final int startRow, final int rows) throws IOException {
 
@@ -214,7 +249,7 @@ public class Report {
                 final Object value = table.getValueAt(row, j);
 
                 if (value != null) {
-                    drawText(contentStream, xPos, yPos, table.getValueAt(row, j).toString());
+                    drawText(contentStream, xPos, yPos, formatValue(table.getValueAt(row, j), table.getColumnStyle(j)));
                 }
 
                 xPos += columnWidth;
@@ -275,7 +310,7 @@ public class Report {
         final String timeStamp = "Created " + DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT).format(LocalDateTime.now());
 
         final int pageCount = doc.getNumberOfPages();
-        float yStart = getMargin() * 2/3;
+        float yStart = getMargin() * 2 / 3;
 
         for (int i = 0; i < pageCount; i++) {
             PDPage page = doc.getPage(i);
@@ -318,5 +353,13 @@ public class Report {
 
     public void setFooterFont(PDFont footerFont) {
         this.footerFont = footerFont;
+    }
+
+    public CurrencyNode getCurrencyNode() {
+        return currencyNode;
+    }
+
+    public void setCurrencyNode(CurrencyNode currencyNode) {
+        this.currencyNode = currencyNode;
     }
 }

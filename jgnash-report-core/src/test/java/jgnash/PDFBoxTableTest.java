@@ -18,6 +18,7 @@
 package jgnash;
 
 import jgnash.engine.CurrencyNode;
+import jgnash.engine.DefaultCurrencies;
 import jgnash.report.pdf.Report;
 import jgnash.report.table.AbstractReportTableModel;
 import jgnash.report.table.ColumnHeaderStyle;
@@ -89,6 +90,8 @@ class PDFBoxTableTest {
         Path tempPath = null;
         Path tempRasterPath = null;
 
+        CurrencyNode currencyNode = DefaultCurrencies.getDefault();
+
         try (final PDDocument doc = new PDDocument()) {
             tempPath = Files.createTempFile("pdfTest", ".pdf");
             tempRasterPath = Files.createTempFile("pdfTest", ".png");
@@ -105,6 +108,7 @@ class PDFBoxTableTest {
             report.setMargin(32);
             report.setFooterFont(PDType1Font.TIMES_ITALIC);
             report.setFooterFontSize(8);
+            report.setCurrencyNode(currencyNode);
 
             report.addTable(doc, new TestReport());
             report.addFooter(doc);
