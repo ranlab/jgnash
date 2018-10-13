@@ -182,10 +182,7 @@ public class Report {
         contentStream.setNonStrokingColor(headerTextColor);
 
         for (int i = 0; i < table.getColumnCount(); i++) {
-            contentStream.beginText();
-            contentStream.newLineAtOffset(xPos, yPos);
-            contentStream.showText(table.getColumnName(i));
-            contentStream.endText();
+            drawText(contentStream, xPos, yPos, table.getColumnName(i));
 
             xPos += columnWidth;
         }
@@ -205,10 +202,7 @@ public class Report {
                 final Object value = table.getValueAt(row, j);
 
                 if (value != null) {
-                    contentStream.beginText();
-                    contentStream.newLineAtOffset(xPos, yPos);
-                    contentStream.showText(table.getValueAt(row, j).toString());
-                    contentStream.endText();
+                    drawText(contentStream, xPos, yPos, table.getValueAt(row, j).toString());
                 }
 
                 xPos += columnWidth;
@@ -232,6 +226,14 @@ public class Report {
         }
 
         contentStream.close();
+    }
+
+    private void drawText(final PDPageContentStream contentStream, final float xStart, final float yStart,
+                          final String text) throws IOException {
+        contentStream.beginText();
+        contentStream.newLineAtOffset(xStart, yStart);
+        contentStream.showText(text);
+        contentStream.endText();
     }
 
 
