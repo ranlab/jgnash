@@ -30,7 +30,14 @@ import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDFont;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
+import org.apache.pdfbox.rendering.ImageType;
+import org.apache.pdfbox.rendering.PDFRenderer;
+import org.apache.pdfbox.tools.imageio.ImageIOUtil;
+
+
 import org.junit.jupiter.api.Test;
+
+import java.awt.image.BufferedImage;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -77,12 +84,15 @@ class PDFBoxTableTest {
     }
 
     @Test
-    void basicReportTest() {
+    void basicReportTest() throws IOException {
 
         Path tempPath = null;
+        Path tempRasterPath = null;
 
         try (final PDDocument doc = new PDDocument()) {
             tempPath = Files.createTempFile("pdfTest", ".pdf");
+            tempRasterPath = Files.createTempFile("pdfTest", ".png");
+
             System.out.println(tempPath);
 
             final float padding = 2.5f;
@@ -103,14 +113,25 @@ class PDFBoxTableTest {
             assertFalse(report.isLandscape());
             assertEquals(PDRectangle.LETTER, report.getPageSize());
             assertEquals(padding, report.getCellPadding());
-
-
             assertTrue(Files.exists(tempPath));
+
+
+            // Create a PNG file
+            final PDFRenderer pdfRenderer = new PDFRenderer(doc);
+            final BufferedImage bim = pdfRenderer.renderImageWithDPI(0, 300, ImageType.RGB);
+            ImageIOUtil.writeImage(bim, tempRasterPath.toString(), 300);
+
+            assertTrue(Files.exists(tempRasterPath));
+
         } catch (final IOException e) {
             e.printStackTrace();
         } finally {
             if (tempPath != null) {
                 //Files.deleteIfExists(tempPath);
+            }
+
+            if (tempRasterPath != null) {
+                Files.deleteIfExists(tempRasterPath);
             }
         }
     }
