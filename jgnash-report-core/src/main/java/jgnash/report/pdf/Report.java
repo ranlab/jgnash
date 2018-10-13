@@ -25,7 +25,6 @@ import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDFont;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
-import org.apache.pdfbox.util.Matrix;
 
 import java.io.IOException;
 
@@ -50,8 +49,6 @@ public class Report {
 
     private PDFont headerFont;
 
-    private boolean landscape = false;
-
     private float margin;
 
     private float cellPadding = 2;
@@ -67,8 +64,13 @@ public class Report {
         return pageSize;
     }
 
-    public void setPageSize(@NotNull PDRectangle pageSize) {
+    public void setPageSize(@NotNull PDRectangle pageSize, boolean landscape) {
+
         this.pageSize = pageSize;
+
+        if (landscape) {
+            this.pageSize = new PDRectangle(pageSize.getHeight(), pageSize.getWidth());
+        }
     }
 
     @NotNull
@@ -93,11 +95,7 @@ public class Report {
     }
 
     public boolean isLandscape() {
-        return landscape;
-    }
-
-    public void setLandscape(boolean landscape) {
-        this.landscape = landscape;
+        return  pageSize.getWidth() > pageSize.getHeight();
     }
 
     public PDFont getHeaderFont() {
@@ -116,13 +114,12 @@ public class Report {
         this.cellPadding = cellPadding;
     }
 
-    private float getAvailableHeight() {
+    public float getMargin() {
+        return margin;
+    }
 
-        if (isLandscape()) {
-            return getPageSize().getWidth() - getMargin() * 2;
-        }
-
-        return getPageSize().getHeight() - getMargin() * 2;
+    public void setMargin(float margin) {
+        this.margin = margin;
     }
 
     public void addTable(final PDDocument doc, final AbstractReportTableModel table) {
@@ -140,10 +137,6 @@ public class Report {
             doc.addPage(page);
 
             try (final PDPageContentStream contentStream = new PDPageContentStream(doc, page)) {
-                if (isLandscape()) {
-                   contentStream.transform(Matrix.getRotateInstance(Math.toRadians(90), 0, 0));
-                }
-
                 rows = rowsPerPage;
 
                 if (remainingRowCount < rows) {
@@ -164,17 +157,15 @@ public class Report {
     private void addTableSection(final AbstractReportTableModel table, final PDPageContentStream contentStream,
                                  final int startRow, final int rows) throws IOException {
 
-        float yPos = isLandscape() ? getPageSize().getWidth() - getMargin() : getPageSize().getHeight() - getMargin();
+        float yPos = getPageSize().getHeight() - getMargin();
         float xPos = getMargin() + getCellPadding();
 
         yPos = yPos - (getTableRowHeight() / 2)
                 - ((getTableFont().getFontDescriptor().getFontBoundingBox().getHeight() / 1000 * getTableFontSize()) / 4);
 
-
         contentStream.setFont(getHeaderFont(), getTableFontSize());
 
-
-        int columnWidth = 58;  // TODO, calculate/pack column widths
+        float columnWidth = getAvailableWidth() / table.getColumnCount();  // TODO, calculate/pack column widths
 
         // draw header
         for (int i = 0; i < table.getColumnCount(); i++) {
@@ -213,19 +204,17 @@ public class Report {
         contentStream.close();
     }
 
-
-    public float getMargin() {
-        return margin;
+    private float getAvailableHeight() {
+        return getPageSize().getHeight() - getMargin() * 2;
     }
 
-    public void setMargin(float margin) {
-        this.margin = margin;
+    private float getAvailableWidth() {
+        return getPageSize().getWidth() - getMargin() * 2;
     }
 
     private PDPage createPage() {
         PDPage page = new PDPage();
         page.setMediaBox(getPageSize());
-        page.setRotation(isLandscape() ? 90 : 0);
         return page;
     }
 }

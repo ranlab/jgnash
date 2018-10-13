@@ -93,25 +93,22 @@ class PDFBoxTableTest {
             tempPath = Files.createTempFile("pdfTest", ".pdf");
             tempRasterPath = Files.createTempFile("pdfTest", ".png");
 
-            System.out.println(tempPath);
-
             final float padding = 2.5f;
+            boolean landscape = true;
 
             final Report report = new Report();
             report.setTableFont(PDType1Font.HELVETICA);
             report.setHeaderFont(PDType1Font.HELVETICA_BOLD);
             report.setCellPadding(padding);
             report.setTableFontSize(9);
-            report.setPageSize(PDRectangle.LETTER);
+            report.setPageSize(PDRectangle.LETTER, landscape);
             report.setMargin(32);
-            report.setLandscape(false);
 
             report.addTable(doc, new TestReport());
 
             doc.save(tempPath.toFile());
 
-            assertFalse(report.isLandscape());
-            assertEquals(PDRectangle.LETTER, report.getPageSize());
+            assertEquals(landscape, report.isLandscape());
             assertEquals(padding, report.getCellPadding());
             assertTrue(Files.exists(tempPath));
 
