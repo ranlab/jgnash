@@ -103,8 +103,11 @@ class PDFBoxTableTest {
             report.setTableFontSize(9);
             report.setPageSize(PDRectangle.LETTER, landscape);
             report.setMargin(32);
+            report.setFooterFont(PDType1Font.TIMES_ITALIC);
+            report.setFooterFontSize(8);
 
             report.addTable(doc, new TestReport());
+            report.addFooter(doc);
 
             doc.save(tempPath.toFile());
 

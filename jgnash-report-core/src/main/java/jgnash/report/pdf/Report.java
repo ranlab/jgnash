@@ -29,27 +29,35 @@ import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import java.awt.Color;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.FormatStyle;
 
 import static jgnash.util.LogUtil.logSevere;
 
 /**
  * Base report format definition.
- *
+ * <p>
  * Units of measure is in Points
  *
  * @author Craig Cavanaugh
- *
+ * <p>
  * TODO: Footer, full margin control
  */
+@SuppressWarnings("WeakerAccess")
 public class Report {
 
     private PDRectangle pageSize;
 
     private float tableFontSize;
 
+    private float footerFontSize;
+
     private PDFont tableFont;
 
     private PDFont headerFont;
+
+    private PDFont footerFont;
 
     private float margin;
 
@@ -60,9 +68,12 @@ public class Report {
     final Color headerTextColor = Color.WHITE;
 
     public Report() {
-        pageSize = PDRectangle.LETTER;
-        tableFont = PDType1Font.HELVETICA;
-        tableFontSize = 12;
+        setPageSize(PDRectangle.LETTER, false);
+        setTableFont(PDType1Font.HELVETICA);
+        setFooterFont(PDType1Font.HELVETICA_OBLIQUE);
+
+        setTableFontSize(12);
+        setFooterFontSize(9);
     }
 
     @NotNull
@@ -101,7 +112,7 @@ public class Report {
     }
 
     public boolean isLandscape() {
-        return  pageSize.getWidth() > pageSize.getHeight();
+        return pageSize.getWidth() > pageSize.getHeight();
     }
 
     public PDFont getHeaderFont() {
@@ -128,11 +139,11 @@ public class Report {
         this.margin = margin;
     }
 
-    public void addTable(final PDDocument doc, final AbstractReportTableModel table) {
+    public void addTable(final PDDocument doc, final AbstractReportTableModel table) throws IOException {
 
         // TODO Allow for summation row for certain report types
-        final int rowsPerPage = (int)Math.floor(getAvailableHeight() / getTableRowHeight()) - 1;
-        final int numberOfPages = (int)Math.ceil((float)table.getRowCount()/ (float)rowsPerPage);
+        final int rowsPerPage = (int) Math.floor(getAvailableHeight() / getTableRowHeight()) - 1;
+        final int numberOfPages = (int) Math.ceil((float) table.getRowCount() / (float) rowsPerPage);
 
         int startRow = 0;
         int remainingRowCount = table.getRowCount();
@@ -155,7 +166,8 @@ public class Report {
                 startRow += rowsPerPage;
 
             } catch (final IOException e) {
-               logSevere(Report.class, e);
+                logSevere(Report.class, e);
+                throw (e);
             }
         }
     }
@@ -245,8 +257,7 @@ public class Report {
     }
 
     private void fillRect(final PDPageContentStream contentStream, final float x, final float y, final float width,
-                          final float height) throws IOException
-    {
+                          final float height) throws IOException {
         contentStream.addRect(x, y, width, height);
         contentStream.fill();
     }
@@ -259,12 +270,53 @@ public class Report {
         return getPageSize().getWidth() - getMargin() * 2;
     }
 
+    public void addFooter(final PDDocument doc) throws IOException {
+
+        final String timeStamp = "Created " + DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT).format(LocalDateTime.now());
+
+        final int pageCount = doc.getNumberOfPages();
+        float yStart = getMargin() * 2/3;
+
+        for (int i = 0; i < pageCount; i++) {
+            PDPage page = doc.getPage(i);
+
+            final String pageText = String.format("Page %s of %s", i + 1, pageCount);
+            final float width = getStringWidth(getFooterFont(), pageText, getFooterFontSize());
+
+            try (final PDPageContentStream contentStream = new PDPageContentStream(doc, page, PDPageContentStream.AppendMode.APPEND, true)) {
+                contentStream.setFont(getFooterFont(), getFooterFontSize());
+
+                drawText(contentStream, getMargin(), yStart, timeStamp);
+                drawText(contentStream, getPageSize().getWidth() - getMargin() - width, yStart, pageText);
+            } catch (final IOException e) {
+                logSevere(Report.class, e);
+            }
+        }
+    }
+
     private PDPage createPage() {
         PDPage page = new PDPage();
         page.setMediaBox(getPageSize());
-
-
-        // TODO: Add page footer here
         return page;
+    }
+
+    private static float getStringWidth(final PDFont font, final String text, final float fontSize) throws IOException {
+        return font.getStringWidth(text) / 1000 * fontSize;
+    }
+
+    public float getFooterFontSize() {
+        return footerFontSize;
+    }
+
+    public void setFooterFontSize(float footerFontSize) {
+        this.footerFontSize = footerFontSize;
+    }
+
+    public PDFont getFooterFont() {
+        return footerFont;
+    }
+
+    public void setFooterFont(PDFont footerFont) {
+        this.footerFont = footerFont;
     }
 }
