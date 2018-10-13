@@ -10,7 +10,7 @@ project.ext {
 dependencies {
     compile project(':jgnash-core')
 
-    compile group: 'com.github.librepdf', name: 'openpdf', version: OpenPDFVersion
+    compile group: 'com.github.librepdf', name: 'openpdf', version: openPDFVersion
 }
 
 jar {

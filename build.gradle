@@ -39,7 +39,8 @@ allprojects {
         jasperReportsVersion = '6.4.3'
         itextVersion = '2.1.7.js6'
         
-        OpenPDFVersion = '1.2.4'
+        openPDFVersion = '1.2.4'
+        pdfBoxVersion = '2.0.11'
 
         nettyVersion = '4.1.29.Final'
 
