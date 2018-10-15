@@ -210,6 +210,22 @@ class PDFBoxTableTest {
         }
 
         @Override
+        public boolean isColumnFixedWidth(final int columnIndex) {
+            switch (columnIndex) {
+                case 0:
+                case 1:
+                case 2:
+                case 6:
+                case 7:
+                case 8:
+                case 9:
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        @Override
         @NotNull
         public String getColumnName(final int columnIndex) {
             return columnNames[columnIndex];
