@@ -90,8 +90,6 @@ class PDFBoxTableTest {
         Path tempPath = null;
         Path tempRasterPath = null;
 
-        CurrencyNode currencyNode = DefaultCurrencies.getDefault();
-
         try (final PDDocument doc = new PDDocument()) {
             tempPath = Files.createTempFile("pdfTest", ".pdf");
             tempRasterPath = Files.createTempFile("pdfTest", ".png");
@@ -110,7 +108,7 @@ class PDFBoxTableTest {
             report.setFooterFontSize(8);
             report.setEllipsis("…");
 
-            report.addTable(doc, new TestReport());
+            report.addTable(doc, new TestReport(), 50);
             report.addFooter(doc);
 
             doc.save(tempPath.toFile());
@@ -254,7 +252,7 @@ class PDFBoxTableTest {
                 case 3:
                     return "Payee " + rowIndex;
                 case 4:
-                    return "Memo " + rowIndex;
+                    return "A Typical Memo " + rowIndex;
                 case 5:
                     return "Account " + rowIndex;
                 case 6:

@@ -163,20 +163,43 @@ public class Report {
         this.footerFont = footerFont;
     }
 
-    public void addTable(final PDDocument doc, final AbstractReportTableModel table) throws IOException {
+    public void addTable(final PDDocument doc, final AbstractReportTableModel table, float yStartMargin) throws IOException {
 
         float[] columnWidths = getColumnWidths(table);
 
+        final int firstPageRows = (int) Math.floor((getAvailableHeight() - yStartMargin) / getTableRowHeight()) - 1;
+
         // TODO Allow for summation row for certain report types
         final int rowsPerPage = (int) Math.floor(getAvailableHeight() / getTableRowHeight()) - 1;
-        final int numberOfPages = (int) Math.ceil((float) table.getRowCount() / (float) rowsPerPage);
+        final int numberOfRemainingPages = (int) Math.ceil((float) (table.getRowCount() - firstPageRows) / (float) rowsPerPage);
 
         int startRow = 0;
         int remainingRowCount = table.getRowCount();
         int rows;
 
-        for (int i = 0; i < numberOfPages; i++) {
-            final PDPage page = createPage();
+        // first page
+        PDPage page = createPage();
+        doc.addPage(page);
+        try (final PDPageContentStream contentStream = new PDPageContentStream(doc, page)) {
+            rows = firstPageRows;
+
+            if (remainingRowCount < rows) {
+                rows = remainingRowCount;
+            }
+
+            addTableSection(table, contentStream, startRow, rows, columnWidths, yStartMargin);
+
+            remainingRowCount = remainingRowCount - rows;
+            startRow += rows;
+
+        } catch (final IOException e) {
+            logSevere(Report.class, e);
+            throw (e);
+        }
+
+
+        for (int i = 0; i < numberOfRemainingPages; i++) {
+            page = createPage();
             doc.addPage(page);
 
             try (final PDPageContentStream contentStream = new PDPageContentStream(doc, page)) {
@@ -186,10 +209,10 @@ public class Report {
                     rows = remainingRowCount;
                 }
 
-                addTableSection(table, contentStream, startRow, rows, columnWidths);
+                addTableSection(table, contentStream, startRow, rows, columnWidths, 0);
 
                 remainingRowCount = remainingRowCount - rows;
-                startRow += rowsPerPage;
+                startRow += rows;
 
             } catch (final IOException e) {
                 logSevere(Report.class, e);
@@ -198,54 +221,10 @@ public class Report {
         }
     }
 
-    private String formatValue(final Object value, final int column, final AbstractReportTableModel tableModel) {
-        if (value == null) {
-            return " ";
-        }
-
-        final ColumnStyle columnStyle = tableModel.getColumnStyle(column);
-
-        switch (columnStyle) {
-            case TIMESTAMP:
-                final DateTimeFormatter dateTimeFormatter = DateUtils.getShortDateTimeFormatter();
-                return dateTimeFormatter.format((LocalDateTime) value);
-            case SHORT_DATE:
-                final DateTimeFormatter dateFormatter = DateUtils.getShortDateFormatter();
-                return dateFormatter.format((LocalDate) value);
-            case SHORT_AMOUNT:
-                final NumberFormat shortNumberFormat = CommodityFormat.getShortNumberFormat(tableModel.getCurrency());
-                return shortNumberFormat.format(value);
-            case BALANCE:
-            case BALANCE_WITH_SUM:
-            case BALANCE_WITH_SUM_AND_GLOBAL:
-            case AMOUNT_SUM:
-                final NumberFormat numberFormat = CommodityFormat.getFullNumberFormat(tableModel.getCurrency());
-                return numberFormat.format(value);
-            default:
-                return value.toString();
-        }
-    }
-
-    private boolean rightAlign(final int column, final AbstractReportTableModel tableModel) {
-        final ColumnStyle columnStyle = tableModel.getColumnStyle(column);
-
-        switch (columnStyle) {
-            case SHORT_AMOUNT:
-            case BALANCE:
-            case BALANCE_WITH_SUM:
-            case BALANCE_WITH_SUM_AND_GLOBAL:
-            case AMOUNT_SUM:
-                return true;
-            default:
-                return false;
-        }
-    }
-
-
     private void addTableSection(final AbstractReportTableModel table, final PDPageContentStream contentStream,
-                                 final int startRow, final int rows, float[] columnWidths) throws IOException {
+                                 final int startRow, final int rows, float[] columnWidths, float yStartMargin) throws IOException {
 
-        float yTop = getPageSize().getHeight() - getMargin();
+        float yTop = getPageSize().getHeight() - getMargin() - yStartMargin;
 
         float yPos = yTop;
         float xPos = getMargin() + getCellPadding();
@@ -318,6 +297,49 @@ public class Report {
         drawLine(contentStream, xPos, yPos, xPos, yPos - getTableRowHeight() * (rows + 1));
 
         contentStream.close();
+    }
+
+    private String formatValue(final Object value, final int column, final AbstractReportTableModel tableModel) {
+        if (value == null) {
+            return " ";
+        }
+
+        final ColumnStyle columnStyle = tableModel.getColumnStyle(column);
+
+        switch (columnStyle) {
+            case TIMESTAMP:
+                final DateTimeFormatter dateTimeFormatter = DateUtils.getShortDateTimeFormatter();
+                return dateTimeFormatter.format((LocalDateTime) value);
+            case SHORT_DATE:
+                final DateTimeFormatter dateFormatter = DateUtils.getShortDateFormatter();
+                return dateFormatter.format((LocalDate) value);
+            case SHORT_AMOUNT:
+                final NumberFormat shortNumberFormat = CommodityFormat.getShortNumberFormat(tableModel.getCurrency());
+                return shortNumberFormat.format(value);
+            case BALANCE:
+            case BALANCE_WITH_SUM:
+            case BALANCE_WITH_SUM_AND_GLOBAL:
+            case AMOUNT_SUM:
+                final NumberFormat numberFormat = CommodityFormat.getFullNumberFormat(tableModel.getCurrency());
+                return numberFormat.format(value);
+            default:
+                return value.toString();
+        }
+    }
+
+    private boolean rightAlign(final int column, final AbstractReportTableModel tableModel) {
+        final ColumnStyle columnStyle = tableModel.getColumnStyle(column);
+
+        switch (columnStyle) {
+            case SHORT_AMOUNT:
+            case BALANCE:
+            case BALANCE_WITH_SUM:
+            case BALANCE_WITH_SUM_AND_GLOBAL:
+            case AMOUNT_SUM:
+                return true;
+            default:
+                return false;
+        }
     }
 
     private void drawText(final PDPageContentStream contentStream, final float xStart, final float yStart,
