@@ -163,13 +163,17 @@ public class Report {
         this.footerFont = footerFont;
     }
 
-    public void addTable(final PDDocument doc, final AbstractReportTableModel table, float yStartMargin) throws IOException {
+    public void addTable(final PDDocument doc, final AbstractReportTableModel table, final String title) throws IOException {
 
         float[] columnWidths = getColumnWidths(table);
 
-        final int firstPageRows = (int) Math.floor((getAvailableHeight() - yStartMargin) / getTableRowHeight()) - 1;
+        float yStartMargin = getMargin();
 
-        // TODO Allow for summation row for certain report types
+        if (title != null && !title.isEmpty()) {
+            yStartMargin += getTableFontSize();
+        }
+
+        final int firstPageRows = (int) Math.floor((getAvailableHeight() - yStartMargin) / getTableRowHeight()) - 1;
         final int rowsPerPage = (int) Math.floor(getAvailableHeight() / getTableRowHeight()) - 1;
         final int numberOfRemainingPages = (int) Math.ceil((float) (table.getRowCount() - firstPageRows) / (float) rowsPerPage);
 
@@ -180,7 +184,14 @@ public class Report {
         // first page
         PDPage page = createPage();
         doc.addPage(page);
+
         try (final PDPageContentStream contentStream = new PDPageContentStream(doc, page)) {
+
+            // add the table title
+            if (title != null && !title.isEmpty()) {
+                addTableTitle(contentStream, title, yStartMargin);
+            }
+
             rows = firstPageRows;
 
             if (remainingRowCount < rows) {
@@ -370,6 +381,22 @@ public class Report {
 
     private float getAvailableWidth() {
         return getPageSize().getWidth() - getMargin() * 2;
+    }
+
+    /**
+     * Adds a Title to the document and returns the height consumed
+     * @param title title
+     * @param yMargin start
+     * @throws IOException exception
+     */
+    private void addTableTitle(final PDPageContentStream contentStream, String title, float yMargin) throws IOException {
+
+        float width = getStringWidth(title, getHeaderFont(), getTableFontSize() * 2);
+        float xPos = (getAvailableWidth() / 2f) - (width / 2f) + getMargin();
+        float yPos = getPageSize().getHeight() - yMargin;
+
+        contentStream.setFont(getHeaderFont(), getTableFontSize() * 2);
+        drawText(contentStream, xPos, yPos, title);
     }
 
     public void addFooter(final PDDocument doc) throws IOException {

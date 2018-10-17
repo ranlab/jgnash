@@ -108,7 +108,7 @@ class PDFBoxTableTest {
             report.setFooterFontSize(8);
             report.setEllipsis("…");
 
-            report.addTable(doc, new TestReport(), 50);
+            report.addTable(doc, new TestReport(), "Test Report");
             report.addFooter(doc);
 
             doc.save(tempPath.toFile());
