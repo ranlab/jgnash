@@ -163,7 +163,7 @@ public class Report {
         this.footerFont = footerFont;
     }
 
-    public void addTable(final PDDocument doc, final AbstractReportTableModel table, final String title) throws IOException {
+    public void addTable(final PDDocument doc, final AbstractReportTableModel table, final String title, final String subTitle) throws IOException {
 
         float[] columnWidths = getColumnWidths(table);
 
@@ -189,7 +189,7 @@ public class Report {
 
             // add the table title
             if (title != null && !title.isEmpty()) {
-                addTableTitle(contentStream, title, yStartMargin);
+                addTableTitle(contentStream, title, subTitle, yStartMargin);
             }
 
             rows = firstPageRows;
@@ -389,7 +389,8 @@ public class Report {
      * @param yMargin start
      * @throws IOException exception
      */
-    private void addTableTitle(final PDPageContentStream contentStream, String title, float yMargin) throws IOException {
+    private void addTableTitle(final PDPageContentStream contentStream, final String title, final String subTitle,
+                               final float yMargin) throws IOException {
 
         float width = getStringWidth(title, getHeaderFont(), getTableFontSize() * 2);
         float xPos = (getAvailableWidth() / 2f) - (width / 2f) + getMargin();
@@ -397,6 +398,14 @@ public class Report {
 
         contentStream.setFont(getHeaderFont(), getTableFontSize() * 2);
         drawText(contentStream, xPos, yPos, title);
+
+        width = getStringWidth(subTitle, getFooterFont(), getFooterFontSize());
+        xPos = (getAvailableWidth() / 2f) - (width / 2f) + getMargin();
+        yPos = yPos - getFooterFontSize()  * 1.5f;
+
+        contentStream.setFont(getFooterFont(), getFooterFontSize());
+        drawText(contentStream, xPos, yPos, title);
+
     }
 
     public void addFooter(final PDDocument doc) throws IOException {
