@@ -46,6 +46,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ResourceBundle;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -107,7 +108,7 @@ class PDFBoxTableTest {
             report.setFooterFont(PDType1Font.TIMES_ITALIC);
             report.setEllipsis("…");
 
-            report.addTable(doc, new TestReport(), "Test Report", "Sub Title");
+            report.addTable(doc, new TestReport(), "Test Report", DateTimeFormatter.ISO_DATE.format(LocalDate.now()));
             report.addFooter(doc);
 
             doc.save(tempPath.toFile());

@@ -399,7 +399,7 @@ public class Report {
         yPos = yPos - getFooterFontSize()  * 1.5f;
 
         contentStream.setFont(getFooterFont(), getFooterFontSize());
-        drawText(contentStream, xPos, yPos, title);
+        drawText(contentStream, xPos, yPos, subTitle);
 
     }
 
