@@ -48,7 +48,7 @@ import static jgnash.util.LogUtil.logSevere;
  *
  * @author Craig Cavanaugh
  * <p>
- * TODO: Footer, full margin control
+ * TODO: full margin control, crosstabulation
  */
 @SuppressWarnings("WeakerAccess")
 public class Report {
@@ -57,9 +57,7 @@ public class Report {
 
     private PDRectangle pageSize;
 
-    private float tableFontSize;
-
-    private float footerFontSize;
+    private float baseFontSize;
 
     private PDFont tableFont;
 
@@ -75,13 +73,14 @@ public class Report {
 
     final Color headerTextColor = Color.WHITE;
 
+    final float FOOTER_SCALE = 0.80f;
+
     public Report() {
         setPageSize(PDRectangle.LETTER, false);
         setTableFont(PDType1Font.HELVETICA);
         setFooterFont(PDType1Font.HELVETICA_OBLIQUE);
 
-        setTableFontSize(12);
-        setFooterFontSize(9);
+        setBaseFontSize(12);
     }
 
     @NotNull
@@ -107,16 +106,16 @@ public class Report {
         this.tableFont = tableFont;
     }
 
-    public float getTableFontSize() {
-        return tableFontSize;
+    public float getBaseFontSize() {
+        return baseFontSize;
     }
 
-    public void setTableFontSize(float tableFontSize) {
-        this.tableFontSize = tableFontSize;
+    public void setBaseFontSize(float tableFontSize) {
+        this.baseFontSize = tableFontSize;
     }
 
     private float getTableRowHeight() {
-        return getTableFontSize() + 2 * getCellPadding();
+        return getBaseFontSize() + 2 * getCellPadding();
     }
 
     public boolean isLandscape() {
@@ -147,12 +146,8 @@ public class Report {
         this.margin = margin;
     }
 
-    public float getFooterFontSize() {
-        return footerFontSize;
-    }
-
-    public void setFooterFontSize(final float footerFontSize) {
-        this.footerFontSize = footerFontSize;
+    private float getFooterFontSize() {
+        return (float) Math.ceil(getBaseFontSize() * FOOTER_SCALE);
     }
 
     public PDFont getFooterFont() {
@@ -170,7 +165,7 @@ public class Report {
         float yStartMargin = getMargin();
 
         if (title != null && !title.isEmpty()) {
-            yStartMargin += getTableFontSize();
+            yStartMargin += getBaseFontSize();
         }
 
         final int firstPageRows = (int) Math.floor((getAvailableHeight() - yStartMargin) / getTableRowHeight()) - 1;
@@ -241,9 +236,9 @@ public class Report {
         float xPos = getMargin() + getCellPadding();
 
         yPos = yPos - (getTableRowHeight() / 2)
-                - ((getTableFont().getFontDescriptor().getFontBoundingBox().getHeight() / 1000 * getTableFontSize()) / 4);
+                - ((getTableFont().getFontDescriptor().getFontBoundingBox().getHeight() / 1000 * getBaseFontSize()) / 4);
 
-        contentStream.setFont(getHeaderFont(), getTableFontSize());
+        contentStream.setFont(getHeaderFont(), getBaseFontSize());
 
         // add the header
         contentStream.setNonStrokingColor(headerBackground);
@@ -257,7 +252,7 @@ public class Report {
         }
 
         // add the rows
-        contentStream.setFont(getTableFont(), getTableFontSize());
+        contentStream.setFont(getTableFont(), getBaseFontSize());
         contentStream.setNonStrokingColor(Color.BLACK);
 
         for (int i = 0; i < rows; i++) {
@@ -275,10 +270,10 @@ public class Report {
                     float availWidth = columnWidths[col] - getCellPadding() * 2;
 
                     final String text = truncateText(formatValue(table.getValueAt(row, col), col, table), availWidth,
-                            getTableFont(), getTableFontSize());
+                            getTableFont(), getBaseFontSize());
 
                     if (rightAlign(col, table)) {
-                        shift = availWidth - getStringWidth(text, getTableFont(), getTableFontSize());
+                        shift = availWidth - getStringWidth(text, getTableFont(), getBaseFontSize());
                     }
 
                     drawText(contentStream, xPos + shift, yPos, text);
@@ -392,11 +387,11 @@ public class Report {
     private void addTableTitle(final PDPageContentStream contentStream, final String title, final String subTitle,
                                final float yMargin) throws IOException {
 
-        float width = getStringWidth(title, getHeaderFont(), getTableFontSize() * 2);
+        float width = getStringWidth(title, getHeaderFont(), getBaseFontSize() * 2);
         float xPos = (getAvailableWidth() / 2f) - (width / 2f) + getMargin();
         float yPos = getPageSize().getHeight() - yMargin;
 
-        contentStream.setFont(getHeaderFont(), getTableFontSize() * 2);
+        contentStream.setFont(getHeaderFont(), getBaseFontSize() * 2);
         drawText(contentStream, xPos, yPos, title);
 
         width = getStringWidth(subTitle, getFooterFont(), getFooterFontSize());
@@ -482,8 +477,8 @@ public class Report {
         for (int i = 0; i < table.getColumnCount(); i++) {
             final String protoValue = table.getColumnPrototypeValueAt(i);
 
-            float headerWidth = getStringWidth(table.getColumnName(i), getHeaderFont(), getTableFontSize()) + getCellPadding() * 2;
-            float cellTextWidth = getStringWidth(protoValue, getTableFont(), getTableFontSize()) + getCellPadding() * 2;
+            float headerWidth = getStringWidth(table.getColumnName(i), getHeaderFont(), getBaseFontSize()) + getCellPadding() * 2;
+            float cellTextWidth = getStringWidth(protoValue, getTableFont(), getBaseFontSize()) + getCellPadding() * 2;
 
             widths[i] = Math.max(headerWidth, cellTextWidth);
 

@@ -101,11 +101,10 @@ class PDFBoxTableTest {
             report.setTableFont(PDType1Font.COURIER);
             report.setHeaderFont(PDType1Font.HELVETICA_BOLD);
             report.setCellPadding(padding);
-            report.setTableFontSize(9);
+            report.setBaseFontSize(9);
             report.setPageSize(PDRectangle.LETTER, landscape);
             report.setMargin(32);
             report.setFooterFont(PDType1Font.TIMES_ITALIC);
-            report.setFooterFontSize(8);
             report.setEllipsis("…");
 
             report.addTable(doc, new TestReport(), "Test Report", "Sub Title");
