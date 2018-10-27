@@ -307,7 +307,7 @@ public abstract class AbstractCrosstabReport extends DynamicJasperReport {
         ci.columnName = "";
         ci.headerStyle = ColumnHeaderStyle.RIGHT;
         ci.columnClass = BigDecimal.class;
-        ci.columnStyle = ColumnStyle.CROSSTAB_TOTAL;
+        ci.columnStyle = ColumnStyle.CROSS_TAB_TOTAL;
         ci.isFixedWidth = true;
         columnsList.add(ci);
 
@@ -316,7 +316,7 @@ public abstract class AbstractCrosstabReport extends DynamicJasperReport {
             ci.columnName = "Percentile";
             ci.headerStyle = ColumnHeaderStyle.RIGHT;
             ci.columnClass = String.class;
-            ci.columnStyle = ColumnStyle.CROSSTAB_TOTAL;
+            ci.columnStyle = ColumnStyle.CROSS_TAB_TOTAL;
             ci.isFixedWidth = true;
             columnsList.add(ci);
         }

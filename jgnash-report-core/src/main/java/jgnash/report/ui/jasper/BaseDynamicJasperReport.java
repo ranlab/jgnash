@@ -259,7 +259,7 @@ public abstract class BaseDynamicJasperReport {
                     amountStyle.setStretchWithOverflow(false);
                 }
                 return amountStyle;
-            case CROSSTAB_TOTAL:
+            case CROSS_TAB_TOTAL:
                 Style totalStyle = new Style();
                 totalStyle.setFont(ReportFactory.getDefaultMonoFont(getBaseFontSize(), true));
                 totalStyle.setHorizontalAlign(HorizontalAlign.RIGHT);
@@ -363,7 +363,7 @@ public abstract class BaseDynamicJasperReport {
                         case BALANCE:
                         case BALANCE_WITH_SUM:
                         case BALANCE_WITH_SUM_AND_GLOBAL:
-                        case CROSSTAB_TOTAL:
+                        case CROSS_TAB_TOTAL:
                             builder.setPattern(CommodityFormat.getFullNumberPattern(model.getCurrency()));
                             break;
                         case PERCENTAGE:
@@ -429,7 +429,7 @@ public abstract class BaseDynamicJasperReport {
                 for (int i = 0; i < columns.size(); i++) {
                     if (model.getColumnStyle(i) == ColumnStyle.GROUP || model.getColumnStyle(i) == ColumnStyle.GROUP_NO_HEADER) {
                         gb.setCriteriaColumn((PropertyColumn) columns.get(i));
-                    } else if (model.getColumnStyle(i) == ColumnStyle.AMOUNT_SUM || model.getColumnStyle(i) == ColumnStyle.BALANCE_WITH_SUM || model.getColumnStyle(i) == ColumnStyle.BALANCE_WITH_SUM_AND_GLOBAL || model.getColumnStyle(i) == ColumnStyle.CROSSTAB_TOTAL) {
+                    } else if (model.getColumnStyle(i) == ColumnStyle.AMOUNT_SUM || model.getColumnStyle(i) == ColumnStyle.BALANCE_WITH_SUM || model.getColumnStyle(i) == ColumnStyle.BALANCE_WITH_SUM_AND_GLOBAL || model.getColumnStyle(i) == ColumnStyle.CROSS_TAB_TOTAL) {
                         gb.addFooterVariable(columns.get(i), DJCalculation.SUM);
                     }
                 }
@@ -455,7 +455,7 @@ public abstract class BaseDynamicJasperReport {
 
                     drb.addColumn(c);
 
-                    if (model.getColumnStyle(i) == ColumnStyle.BALANCE_WITH_SUM_AND_GLOBAL || model.getColumnStyle(i) == ColumnStyle.CROSSTAB_TOTAL) {
+                    if (model.getColumnStyle(i) == ColumnStyle.BALANCE_WITH_SUM_AND_GLOBAL || model.getColumnStyle(i) == ColumnStyle.CROSS_TAB_TOTAL) {
                         drb.addGlobalFooterVariable(c, DJCalculation.SUM, getTypeFooterStyle());
                         global = true;
                     }
