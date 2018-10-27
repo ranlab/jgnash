@@ -71,10 +71,18 @@ public abstract class AbstractReportTableModel extends AbstractTableModel {
         return new int[0];  // return an empty array by default
     }
 
+    /**
+     * Determines if a column is visible.
+     *
+     * @param column column to check
+     * @return true if the column data is visible in the report
+     */
     public boolean isColumnVisible(final int column) {
         boolean result = true;
 
-        if (getColumnStyle(column).equals(ColumnStyle.GROUP_NO_HEADER)) {
+        final ColumnStyle columnStyle = getColumnStyle(column);
+
+        if (columnStyle == ColumnStyle.GROUP_NO_HEADER || columnStyle == ColumnStyle.GROUP) {
             result = false;
         } else {
             int[] columnsToHide = getColumnsToHide();
