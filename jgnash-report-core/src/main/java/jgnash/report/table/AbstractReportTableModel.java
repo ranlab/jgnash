@@ -17,20 +17,20 @@
  */
 package jgnash.report.table;
 
+import jgnash.engine.CurrencyNode;
+import jgnash.text.CommodityFormat;
+import jgnash.time.DateUtils;
+import jgnash.util.LogUtil;
+import jgnash.util.NotNull;
+
+import javax.swing.table.AbstractTableModel;
+
 import java.math.BigDecimal;
 import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
-
-import javax.swing.table.AbstractTableModel;
-
-import jgnash.engine.CurrencyNode;
-import jgnash.text.CommodityFormat;
-import jgnash.time.DateUtils;
-import jgnash.util.LogUtil;
-import jgnash.util.NotNull;
 
 /**
  * Report model interface
@@ -69,6 +69,25 @@ public abstract class AbstractReportTableModel extends AbstractTableModel {
     @NotNull
     public int[] getColumnsToHide() {
         return new int[0];  // return an empty array by default
+    }
+
+    public boolean isColumnVisible(final int column) {
+        boolean result = true;
+
+        if (getColumnStyle(column).equals(ColumnStyle.GROUP_NO_HEADER)) {
+            result = false;
+        } else {
+            int[] columnsToHide = getColumnsToHide();
+
+            for (int i : columnsToHide) {
+                if (column == i) {
+                    result = false;
+                    break;
+                }
+            }
+        }
+
+        return result;
     }
 
     /**

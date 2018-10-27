@@ -246,47 +246,59 @@ public class Report {
 
         contentStream.setNonStrokingColor(headerTextColor);
 
-        for (int col = 0; col < table.getColumnCount(); col++) {
-            drawText(contentStream, xPos, yPos, table.getColumnName(col));
-            xPos += columnWidths[col];
+        int col = 0;
+        for (int i = 0; i < table.getColumnCount(); i++) {
+            if (table.isColumnVisible(i)) {
+                drawText(contentStream, xPos, yPos, table.getColumnName(i));
+                xPos += columnWidths[col];
+
+                col++;
+            }
         }
 
         // add the rows
         contentStream.setFont(getTableFont(), getBaseFontSize());
         contentStream.setNonStrokingColor(Color.BLACK);
 
-        for (int i = 0; i < rows; i++) {
-            int row = i + startRow;
+        for (int r = 0; r < rows; r++) {
+            int row = r + startRow;
 
             xPos = getMargin() + getCellPadding();
             yPos -= getTableRowHeight();
 
-            for (int col = 0; col < table.getColumnCount(); col++) {
+            col = 0;
+            for (int i = 0; i < table.getColumnCount(); i++) {
 
-                final Object value = table.getValueAt(row, col);
+                if (table.isColumnVisible(i)) {
 
-                if (value != null) {
-                    float shift = 0;
-                    float availWidth = columnWidths[col] - getCellPadding() * 2;
+                    final Object value = table.getValueAt(row, i);
 
-                    final String text = truncateText(formatValue(table.getValueAt(row, col), col, table), availWidth,
-                            getTableFont(), getBaseFontSize());
+                    if (value != null) {
+                        float shift = 0;
+                        float availWidth = columnWidths[col] - getCellPadding() * 2;
 
-                    if (rightAlign(col, table)) {
-                        shift = availWidth - getStringWidth(text, getTableFont(), getBaseFontSize());
+                        final String text = truncateText(formatValue(table.getValueAt(row, i), i, table), availWidth,
+                                getTableFont(), getBaseFontSize());
+
+                        if (rightAlign(i, table)) {
+                            shift = availWidth - getStringWidth(text, getTableFont(), getBaseFontSize());
+                        }
+
+                        drawText(contentStream, xPos + shift, yPos, text);
                     }
 
-                    drawText(contentStream, xPos + shift, yPos, text);
-                }
+                    xPos += columnWidths[col];
 
-                xPos += columnWidths[col];
+                    col++;
+                }
             }
         }
 
         // add row lines
         yPos = yTop;
         xPos = getMargin();
-        for (int i = 0; i <= rows + 1; i++) {
+
+        for (int r = 0; r <= rows + 1; r++) {
             drawLine(contentStream, xPos, yPos, getAvailableWidth() + getMargin(), yPos);
             yPos -= getTableRowHeight();
         }
@@ -294,9 +306,15 @@ public class Report {
         // add column lines
         yPos = yTop;
         xPos = getMargin();
-        for (int col = 0; col < table.getColumnCount(); col++) {
-            drawLine(contentStream, xPos, yPos, xPos, yPos - getTableRowHeight() * (rows + 1));
-            xPos += columnWidths[col];
+
+        col = 0;
+        for (int i = 0; i < table.getColumnCount(); i++) {
+            if (table.isColumnVisible(i)) {
+                drawLine(contentStream, xPos, yPos, xPos, yPos - getTableRowHeight() * (rows + 1));
+                xPos += columnWidths[col];
+
+                col++;
+            }
         }
 
         // end of last column
@@ -380,7 +398,8 @@ public class Report {
 
     /**
      * Adds a Title to the document and returns the height consumed
-     * @param title title
+     *
+     * @param title   title
      * @param yMargin start
      * @throws IOException exception
      */
@@ -396,7 +415,7 @@ public class Report {
 
         width = getStringWidth(subTitle, getFooterFont(), getFooterFontSize());
         xPos = (getAvailableWidth() / 2f) - (width / 2f) + getMargin();
-        yPos = yPos - getFooterFontSize()  * 1.5f;
+        yPos = yPos - getFooterFontSize() * 1.5f;
 
         contentStream.setFont(getFooterFont(), getFooterFontSize());
         drawText(contentStream, xPos, yPos, subTitle);
@@ -467,46 +486,65 @@ public class Report {
     }
 
     private float[] getColumnWidths(final AbstractReportTableModel table) throws IOException {
-        float[] widths = new float[table.getColumnCount()]; // calculated optimal widths
+
+        int visibleColumnCount = 0;
+
+        for (int i = 0; i < table.getColumnCount(); i++) {
+            if (table.isColumnVisible(i)) {
+                visibleColumnCount++;
+            }
+        }
+
+        float[] widths = new float[visibleColumnCount]; // calculated optimal widths
 
         float measuredWidth = 0;
         float fixedWidth = 0;
         boolean compressAll = false;
         int flexColumns = 0;
 
+        int col = 0;
         for (int i = 0; i < table.getColumnCount(); i++) {
-            final String protoValue = table.getColumnPrototypeValueAt(i);
+            if (table.isColumnVisible(i)) {
 
-            float headerWidth = getStringWidth(table.getColumnName(i), getHeaderFont(), getBaseFontSize()) + getCellPadding() * 2;
-            float cellTextWidth = getStringWidth(protoValue, getTableFont(), getBaseFontSize()) + getCellPadding() * 2;
+                final String protoValue = table.getColumnPrototypeValueAt(i);
 
-            widths[i] = Math.max(headerWidth, cellTextWidth);
+                float headerWidth = getStringWidth(table.getColumnName(i), getHeaderFont(), getBaseFontSize()) + getCellPadding() * 2;
+                float cellTextWidth = getStringWidth(protoValue, getTableFont(), getBaseFontSize()) + getCellPadding() * 2;
 
-            measuredWidth += widths[i];
+                widths[col] = Math.max(headerWidth, cellTextWidth);
 
-            if (table.isColumnFixedWidth(i)) {
-                fixedWidth += widths[i];
-            } else {
-                flexColumns++;
+                measuredWidth += widths[col];
+
+                if (table.isColumnFixedWidth(i)) {
+                    fixedWidth += widths[col];
+                } else {
+                    flexColumns++;
+                }
+
+                col++;
             }
         }
 
         if (fixedWidth > getAvailableWidth()) {
             compressAll = true;
-            flexColumns = table.getColumnCount();
+            flexColumns = visibleColumnCount;
         }
 
         float widthDelta;
 
         if (compressAll) {  // make it ugly
-            widthDelta = (getAvailableWidth() - measuredWidth) / table.getColumnCount();
+            widthDelta = (getAvailableWidth() - measuredWidth) / visibleColumnCount;
         } else {
             widthDelta = (getAvailableWidth() - measuredWidth) / flexColumns;
         }
 
-        for (int col = 0; col < table.getColumnCount(); col++) {
-            if (compressAll || !table.isColumnFixedWidth(col)) {
-                widths[col] += widthDelta;
+        col = 0;
+        for (int i = 0; i < table.getColumnCount(); i++) {
+            if (table.isColumnVisible(i)) {
+                if (compressAll || !table.isColumnFixedWidth(i)) {
+                    widths[col] += widthDelta;
+                }
+                col++;
             }
         }
 

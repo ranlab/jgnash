@@ -267,6 +267,11 @@ class PDFBoxTableTest {
                     return null;
             }
         }
+
+        public int[] getColumnsToHide() {
+            // return new int[] {1};   // hide the timestamp
+            return new int[0];  // return an empty array by default
+        }
     }
 
 }
