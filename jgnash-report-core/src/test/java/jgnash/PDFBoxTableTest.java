@@ -108,7 +108,64 @@ class PDFBoxTableTest {
             report.setFooterFont(PDType1Font.TIMES_ITALIC);
             report.setEllipsis("…");
 
-            report.addTable(doc, new TestReport(), "Test Report", DateTimeFormatter.ISO_DATE.format(LocalDate.now()));
+            assertEquals(1, report.getGroups(new BasicTestReport()).size());
+
+            report.addTable(doc, new BasicTestReport(), "Test Report", DateTimeFormatter.ISO_DATE.format(LocalDate.now()));
+            report.addFooter(doc);
+
+            doc.save(tempPath.toFile());
+
+            assertEquals(landscape, report.isLandscape());
+            assertEquals(padding, report.getCellPadding());
+            assertTrue(Files.exists(tempPath));
+
+
+            // Create a PNG file
+            final PDFRenderer pdfRenderer = new PDFRenderer(doc);
+            final BufferedImage bim = pdfRenderer.renderImageWithDPI(0, 300, ImageType.RGB);
+            ImageIOUtil.writeImage(bim, tempRasterPath.toString(), 300);
+
+            assertTrue(Files.exists(tempRasterPath));
+
+        } catch (final IOException e) {
+            e.printStackTrace();
+        } finally {
+            if (tempPath != null) {
+                Files.deleteIfExists(tempPath);
+            }
+
+            if (tempRasterPath != null) {
+                Files.deleteIfExists(tempRasterPath);
+            }
+        }
+    }
+
+    @Test
+    void crossTabReportTest() throws IOException {
+
+        Path tempPath = null;
+        Path tempRasterPath = null;
+
+        try (final PDDocument doc = new PDDocument()) {
+            tempPath = Files.createTempFile("pdfTest", ".pdf");
+            tempRasterPath = Files.createTempFile("pdfTest", ".png");
+
+            final float padding = 2.5f;
+            boolean landscape = true;
+
+            final Report report = new Report();
+            report.setTableFont(PDType1Font.COURIER);
+            report.setHeaderFont(PDType1Font.HELVETICA_BOLD);
+            report.setCellPadding(padding);
+            report.setBaseFontSize(9);
+            report.setPageSize(PDRectangle.LETTER, landscape);
+            report.setMargin(32);
+            report.setFooterFont(PDType1Font.TIMES_ITALIC);
+            report.setEllipsis("…");
+
+            assertEquals(2, report.getGroups(new CrossTabTestReport()).size());
+
+            report.addTable(doc, new CrossTabTestReport(), "Test Report", DateTimeFormatter.ISO_DATE.format(LocalDate.now()));
             report.addFooter(doc);
 
             doc.save(tempPath.toFile());
@@ -138,7 +195,7 @@ class PDFBoxTableTest {
         }
     }
 
-    private class TestReport extends AbstractReportTableModel {
+    private class BasicTestReport extends AbstractReportTableModel {
 
         private static final String COLUMN_DATE = "Column.Date";
         private static final String COLUMN_NUM = "Column.Num";
@@ -155,16 +212,16 @@ class PDFBoxTableTest {
 
         private final ColumnStyle[] columnStyles = {ColumnStyle.SHORT_DATE, ColumnStyle.TIMESTAMP,
                 ColumnStyle.STRING, ColumnStyle.STRING, ColumnStyle.STRING, ColumnStyle.STRING, ColumnStyle.STRING,
-                ColumnStyle.SHORT_AMOUNT, ColumnStyle.SHORT_AMOUNT, ColumnStyle.AMOUNT_SUM};
+                ColumnStyle.SHORT_AMOUNT, ColumnStyle.SHORT_AMOUNT, ColumnStyle.AMOUNT_SUM, ColumnStyle.GROUP};
 
         private String[] columnNames = {rb.getString(COLUMN_DATE), rb.getString(COLUMN_TIMESTAMP),
                 rb.getString(COLUMN_NUM), rb.getString(COLUMN_PAYEE), rb.getString(COLUMN_MEMO),
                 rb.getString(COLUMN_ACCOUNT), rb.getString(COLUMN_CLR), rb.getString(COLUMN_DEPOSIT),
-                rb.getString(COLUMN_WITHDRAWAL), rb.getString(COLUMN_BALANCE)};
+                rb.getString(COLUMN_WITHDRAWAL), rb.getString(COLUMN_BALANCE), "group"};
 
         final CurrencyNode currencyNode;
 
-        TestReport() {
+        BasicTestReport() {
             currencyNode = DefaultCurrencies.getDefault();
         }
 
@@ -201,6 +258,7 @@ class PDFBoxTableTest {
                 case 4:
                 case 5:
                 case 6:
+                case 10:
                     return String.class;
                 default:
                     return BigDecimal.class;
@@ -217,6 +275,7 @@ class PDFBoxTableTest {
                 case 7:
                 case 8:
                 case 9:
+                case 10:
                     return true;
                 default:
                     return false;
@@ -263,6 +322,148 @@ class PDFBoxTableTest {
                     return rowIndex % 2 != 0 ? new BigDecimal(100 + rowIndex) : null;
                 case 9:
                     return new BigDecimal(1000 + rowIndex * 10);
+                case 10:
+                    return "income";
+                default:
+                    return null;
+            }
+        }
+
+        public int[] getColumnsToHide() {
+            // return new int[] {1};   // hide the timestamp
+            return new int[0];  // return an empty array by default
+        }
+    }
+
+    private class CrossTabTestReport extends AbstractReportTableModel {
+
+        private static final String COLUMN_DATE = "Column.Date";
+        private static final String COLUMN_NUM = "Column.Num";
+        private static final String COLUMN_PAYEE = "Column.Payee";
+        private static final String COLUMN_MEMO = "Column.Memo";
+        private static final String COLUMN_ACCOUNT = "Column.Account";
+        private static final String COLUMN_CLR = "Column.Clr";
+        private static final String COLUMN_DEPOSIT = "Column.Deposit";
+        private static final String COLUMN_WITHDRAWAL = "Column.Withdrawal";
+        private static final String COLUMN_BALANCE = "Column.Balance";
+        private static final String COLUMN_TIMESTAMP = "Column.Timestamp";
+
+        private final ResourceBundle rb = ResourceUtils.getBundle();
+
+        private final ColumnStyle[] columnStyles = {ColumnStyle.SHORT_DATE, ColumnStyle.TIMESTAMP,
+                ColumnStyle.STRING, ColumnStyle.STRING, ColumnStyle.STRING, ColumnStyle.STRING, ColumnStyle.STRING,
+                ColumnStyle.SHORT_AMOUNT, ColumnStyle.SHORT_AMOUNT, ColumnStyle.AMOUNT_SUM, ColumnStyle.GROUP};
+
+        private String[] columnNames = {rb.getString(COLUMN_DATE), rb.getString(COLUMN_TIMESTAMP),
+                rb.getString(COLUMN_NUM), rb.getString(COLUMN_PAYEE), rb.getString(COLUMN_MEMO),
+                rb.getString(COLUMN_ACCOUNT), rb.getString(COLUMN_CLR), rb.getString(COLUMN_DEPOSIT),
+                rb.getString(COLUMN_WITHDRAWAL), rb.getString(COLUMN_BALANCE), "group"};
+
+        final CurrencyNode currencyNode;
+
+        CrossTabTestReport() {
+            currencyNode = DefaultCurrencies.getDefault();
+        }
+
+
+        @Override
+        public CurrencyNode getCurrency() {
+            return currencyNode;
+        }
+
+        @Override
+        public ColumnStyle getColumnStyle(int columnIndex) {
+            return columnStyles[columnIndex];
+        }
+
+        @Override
+        public ColumnHeaderStyle getColumnHeaderStyle(int columnIndex) {
+            if (columnIndex < 6) {
+                return ColumnHeaderStyle.LEFT;
+            }
+
+            return ColumnHeaderStyle.RIGHT;
+        }
+
+        @Override
+        public Class<?> getColumnClass(final int columnIndex) {
+
+            switch (columnIndex) {
+                case 0:
+                    return LocalDate.class;
+                case 1:
+                    return LocalDateTime.class;
+                case 2:
+                case 3:
+                case 4:
+                case 5:
+                case 6:
+                case 10:
+                    return String.class;
+                default:
+                    return BigDecimal.class;
+            }
+        }
+
+        @Override
+        public boolean isColumnFixedWidth(final int columnIndex) {
+            switch (columnIndex) {
+                case 0:
+                case 1:
+                case 2:
+                case 6:
+                case 7:
+                case 8:
+                case 9:
+                case 10:
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        @Override
+        @NotNull
+        public String getColumnName(final int columnIndex) {
+            return columnNames[columnIndex];
+        }
+
+        @Override
+        public int getRowCount() {
+            return 80;
+        }
+
+        @Override
+        public int getColumnCount() {
+            return columnNames.length;
+        }
+
+        @Override
+        public Object getValueAt(int rowIndex, int columnIndex) {
+
+            switch (columnIndex) {
+                case 0:
+                    return LocalDate.now().plusDays(rowIndex);
+                case 1:
+                    return LocalDateTime.now().plusDays(rowIndex);
+                case 2:
+                    return Integer.toString(1000 + rowIndex);
+                case 3:
+                    return "Payee " + rowIndex;
+                case 4:
+                    return "A Typical Memo " + rowIndex;
+                case 5:
+                    return "Account " + rowIndex;
+                case 6:
+                    return "R";
+                case 7:
+                    return rowIndex % 2 == 0 ? new BigDecimal(100 + rowIndex) : null;
+                case 8:
+                    return rowIndex % 2 != 0 ? new BigDecimal(100 + rowIndex) : null;
+                case 9:
+                    return new BigDecimal(1000 + rowIndex * 10);
+                case 10:
+                    return rowIndex % 2 == 0 ? "income" : "expense";
                 default:
                     return null;
             }

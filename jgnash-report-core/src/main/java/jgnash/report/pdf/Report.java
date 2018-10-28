@@ -22,7 +22,6 @@ import jgnash.report.table.ColumnStyle;
 import jgnash.text.CommodityFormat;
 import jgnash.time.DateUtils;
 import jgnash.util.NotNull;
-
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
@@ -38,6 +37,10 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
 
 import static jgnash.util.LogUtil.logSevere;
 
@@ -225,6 +228,24 @@ public class Report {
                 throw (e);
             }
         }
+    }
+
+    public List<String> getGroups(final AbstractReportTableModel tableModel) {
+
+        final Set<String> groups = new TreeSet<>();
+
+        for (int c = 0; c < tableModel.getColumnCount(); c++) {
+
+            final ColumnStyle columnStyle = tableModel.getColumnStyle(c);
+
+            if (columnStyle == ColumnStyle.GROUP || columnStyle == ColumnStyle.GROUP_NO_HEADER) {
+                for (int r = 0; r < tableModel.getRowCount(); r++) {
+                    groups.add(tableModel.getValueAt(r, c).toString());
+                }
+            }
+        }
+
+        return new ArrayList<>(groups);
     }
 
     private void addTableSection(final AbstractReportTableModel table, final PDPageContentStream contentStream,
