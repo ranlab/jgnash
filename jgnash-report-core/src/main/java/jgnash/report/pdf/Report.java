@@ -19,6 +19,7 @@ package jgnash.report.pdf;
 
 import jgnash.report.table.AbstractReportTableModel;
 import jgnash.report.table.ColumnStyle;
+import jgnash.resource.util.ResourceUtils;
 import jgnash.text.CommodityFormat;
 import jgnash.time.DateUtils;
 import jgnash.util.NotNull;
@@ -32,6 +33,7 @@ import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import java.awt.Color;
 
 import java.io.IOException;
+import java.text.MessageFormat;
 import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -39,6 +41,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -55,6 +58,8 @@ import static jgnash.util.LogUtil.logSevere;
  */
 @SuppressWarnings("WeakerAccess")
 public class Report {
+
+    protected static final ResourceBundle rb = ResourceUtils.getBundle();
 
     private String ellipsis = "...";
 
@@ -77,6 +82,11 @@ public class Report {
     final Color headerTextColor = Color.WHITE;
 
     final float FOOTER_SCALE = 0.80f;
+
+    /**
+     * Global, current y location for the current page
+     */
+    float yPos;
 
     public Report() {
         setPageSize(PDRectangle.LETTER, false);
@@ -253,7 +263,8 @@ public class Report {
 
         float yTop = getPageSize().getHeight() - getMargin() - yStartMargin;
 
-        float yPos = yTop;
+        yPos = yTop;    // start of a new page
+
         float xPos = getMargin() + getCellPadding();
 
         yPos = yPos - (getTableRowHeight() / 2)
@@ -445,15 +456,14 @@ public class Report {
 
     public void addFooter(final PDDocument doc) throws IOException {
 
-        final String timeStamp = "Created " + DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT).format(LocalDateTime.now());
+        final String timeStamp = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT).format(LocalDateTime.now());
 
         final int pageCount = doc.getNumberOfPages();
         float yStart = getMargin() * 2 / 3;
 
         for (int i = 0; i < pageCount; i++) {
-            PDPage page = doc.getPage(i);
-
-            final String pageText = String.format("Page %s of %s", i + 1, pageCount);
+            final PDPage page = doc.getPage(i);
+            final String pageText = MessageFormat.format(rb.getString("Pattern.Pages"), i + 1, pageCount);
             final float width = getStringWidth(pageText, getFooterFont(), getFooterFontSize());
 
             try (final PDPageContentStream contentStream = new PDPageContentStream(doc, page, PDPageContentStream.AppendMode.APPEND, true)) {
