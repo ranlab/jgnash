@@ -52,6 +52,8 @@ import static jgnash.util.LogUtil.logSevere;
  * <p>
  * Units of measure is in Points
  *
+ * The origin of a PDFBox page is the bottom left corner
+ *
  * @author Craig Cavanaugh
  * <p>
  * TODO: full margin control, crosstabulation
@@ -181,61 +183,24 @@ public class Report {
 
         float[] columnWidths = getColumnWidths(table);
 
-        float yStartMargin = getMargin();
+        int rowsWritten = 0;  // tracks the number of rows written
 
-        if (title != null && !title.isEmpty()) {
-            yStartMargin += getBaseFontSize();
-        }
+        while (rowsWritten < table.getRowCount()) {
 
-        final int firstPageRows = (int) Math.floor((getAvailableHeight() - yStartMargin) / getTableRowHeight()) - 1;
-        final int rowsPerPage = (int) Math.floor(getAvailableHeight() / getTableRowHeight()) - 1;
-        final int numberOfRemainingPages = (int) Math.ceil((float) (table.getRowCount() - firstPageRows) / (float) rowsPerPage);
+            final PDPage page = createPage();
 
-        int startRow = 0;
-        int remainingRowCount = table.getRowCount();
-        int rows;
-
-        // first page
-        PDPage page = createPage();
-
-        try (final PDPageContentStream contentStream = new PDPageContentStream(pdfDocument, page)) {
-
-            // add the table title
-            if (title != null && !title.isEmpty()) {
-                addTableTitle(contentStream, title, subTitle, yStartMargin);
-            }
-
-            rows = firstPageRows;
-
-            if (remainingRowCount < rows) {
-                rows = remainingRowCount;
-            }
-
-            addTableSection(table, contentStream, startRow, rows, columnWidths, yStartMargin);
-
-            remainingRowCount = remainingRowCount - rows;
-            startRow += rows;
-
-        } catch (final IOException e) {
-            logSevere(Report.class, e);
-            throw (e);
-        }
-
-
-        for (int i = 0; i < numberOfRemainingPages; i++) {
-            page = createPage();
+            float yStart = 0;   // additional  margin down from the top of the page
 
             try (final PDPageContentStream contentStream = new PDPageContentStream(pdfDocument, page)) {
-                rows = rowsPerPage;
 
-                if (remainingRowCount < rows) {
-                    rows = remainingRowCount;
+                // add the table title if just starting
+                if (title != null && !title.isEmpty() && rowsWritten == 0) {
+                    yStart += getBaseFontSize() + getMargin();
+                    addTableTitle(contentStream, title, subTitle, yStart);
                 }
 
-                addTableSection(table, contentStream, startRow, rows, columnWidths, 0);
-
-                remainingRowCount = remainingRowCount - rows;
-                startRow += rows;
+                // write a section of the table
+                rowsWritten += addTableSection(table, contentStream, rowsWritten, columnWidths, yStart);
 
             } catch (final IOException e) {
                 logSevere(Report.class, e);
@@ -262,10 +227,12 @@ public class Report {
         return new ArrayList<>(groups);
     }
 
-    private void addTableSection(final AbstractReportTableModel table, final PDPageContentStream contentStream,
-                                 final int startRow, final int rows, float[] columnWidths, float yStartMargin) throws IOException {
+    private int addTableSection(final AbstractReportTableModel table, final PDPageContentStream contentStream,
+                                 final int startRow, float[] columnWidths, float yStart) throws IOException {
 
-        float yTop = getPageSize().getHeight() - getMargin() - yStartMargin;
+        int rowsWritten = 0;    // the return value of the number of rows written
+
+        float yTop = getPageSize().getHeight() - getMargin() - yStart;
 
         yPos = yTop;    // start of a new page
 
@@ -296,9 +263,9 @@ public class Report {
         contentStream.setFont(getTableFont(), getBaseFontSize());
         contentStream.setNonStrokingColor(Color.BLACK);
 
-        for (int r = 0; r < rows; r++) {
-            int row = r + startRow;
+        int row = startRow;
 
+        while (yPos > getMargin() + getTableRowHeight() && row < table.getRowCount()) {
             xPos = getMargin() + getCellPadding();
             yPos -= getTableRowHeight();
 
@@ -328,13 +295,16 @@ public class Report {
                     col++;
                 }
             }
+
+            rowsWritten++;
+            row++;
         }
 
         // add row lines
         yPos = yTop;
         xPos = getMargin();
 
-        for (int r = 0; r <= rows + 1; r++) {
+        for (int r = 0; r <= rowsWritten + 1; r++) {
             drawLine(contentStream, xPos, yPos, getAvailableWidth() + getMargin(), yPos);
             yPos -= getTableRowHeight();
         }
@@ -346,7 +316,7 @@ public class Report {
         col = 0;
         for (int i = 0; i < table.getColumnCount(); i++) {
             if (table.isColumnVisible(i)) {
-                drawLine(contentStream, xPos, yPos, xPos, yPos - getTableRowHeight() * (rows + 1));
+                drawLine(contentStream, xPos, yPos, xPos, yPos - getTableRowHeight() * (rowsWritten + 1));
                 xPos += columnWidths[col];
 
                 col++;
@@ -354,7 +324,9 @@ public class Report {
         }
 
         // end of last column
-        drawLine(contentStream, xPos, yPos, xPos, yPos - getTableRowHeight() * (rows + 1));
+        drawLine(contentStream, xPos, yPos, xPos, yPos - getTableRowHeight() * (rowsWritten + 1));
+
+        return rowsWritten;
     }
 
     private String formatValue(final Object value, final int column, final AbstractReportTableModel tableModel) {
@@ -420,10 +392,6 @@ public class Report {
                           final float height) throws IOException {
         contentStream.addRect(x, y, width, height);
         contentStream.fill();
-    }
-
-    private float getAvailableHeight() {
-        return getPageSize().getHeight() - getMargin() * 2;
     }
 
     private float getAvailableWidth() {
