@@ -355,8 +355,6 @@ public class Report {
 
         // end of last column
         drawLine(contentStream, xPos, yPos, xPos, yPos - getTableRowHeight() * (rows + 1));
-
-        contentStream.close();
     }
 
     private String formatValue(final Object value, final int column, final AbstractReportTableModel tableModel) {
