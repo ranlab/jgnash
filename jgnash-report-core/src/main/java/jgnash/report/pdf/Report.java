@@ -61,6 +61,8 @@ public class Report {
 
     protected static final ResourceBundle rb = ResourceUtils.getBundle();
 
+    private static final int DEFAULT_BASE_FONT_SIZE = 11;
+
     private String ellipsis = "...";
 
     private PDRectangle pageSize;
@@ -83,17 +85,21 @@ public class Report {
 
     final float FOOTER_SCALE = 0.80f;
 
+    final PDDocument pdfDocument;
+
     /**
      * Global, current y location for the current page
      */
     float yPos;
 
-    public Report() {
+    public Report(final PDDocument pdfDocument) {
+        this.pdfDocument = pdfDocument;
+
         setPageSize(PDRectangle.LETTER, false);
         setTableFont(PDType1Font.HELVETICA);
         setFooterFont(PDType1Font.HELVETICA_OBLIQUE);
 
-        setBaseFontSize(12);
+        setBaseFontSize(DEFAULT_BASE_FONT_SIZE);
     }
 
     @NotNull
@@ -171,7 +177,7 @@ public class Report {
         this.footerFont = footerFont;
     }
 
-    public void addTable(final PDDocument doc, final AbstractReportTableModel table, final String title, final String subTitle) throws IOException {
+    public void addTable(final AbstractReportTableModel table, final String title, final String subTitle) throws IOException {
 
         float[] columnWidths = getColumnWidths(table);
 
@@ -191,9 +197,8 @@ public class Report {
 
         // first page
         PDPage page = createPage();
-        doc.addPage(page);
 
-        try (final PDPageContentStream contentStream = new PDPageContentStream(doc, page)) {
+        try (final PDPageContentStream contentStream = new PDPageContentStream(pdfDocument, page)) {
 
             // add the table title
             if (title != null && !title.isEmpty()) {
@@ -219,9 +224,8 @@ public class Report {
 
         for (int i = 0; i < numberOfRemainingPages; i++) {
             page = createPage();
-            doc.addPage(page);
 
-            try (final PDPageContentStream contentStream = new PDPageContentStream(doc, page)) {
+            try (final PDPageContentStream contentStream = new PDPageContentStream(pdfDocument, page)) {
                 rows = rowsPerPage;
 
                 if (remainingRowCount < rows) {
@@ -454,19 +458,19 @@ public class Report {
 
     }
 
-    public void addFooter(final PDDocument doc) throws IOException {
+    public void addFooter() throws IOException {
 
         final String timeStamp = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT).format(LocalDateTime.now());
 
-        final int pageCount = doc.getNumberOfPages();
+        final int pageCount = pdfDocument.getNumberOfPages();
         float yStart = getMargin() * 2 / 3;
 
         for (int i = 0; i < pageCount; i++) {
-            final PDPage page = doc.getPage(i);
+            final PDPage page = pdfDocument.getPage(i);
             final String pageText = MessageFormat.format(rb.getString("Pattern.Pages"), i + 1, pageCount);
             final float width = getStringWidth(pageText, getFooterFont(), getFooterFontSize());
 
-            try (final PDPageContentStream contentStream = new PDPageContentStream(doc, page, PDPageContentStream.AppendMode.APPEND, true)) {
+            try (final PDPageContentStream contentStream = new PDPageContentStream(pdfDocument, page, PDPageContentStream.AppendMode.APPEND, true)) {
                 contentStream.setFont(getFooterFont(), getFooterFontSize());
 
                 drawText(contentStream, getMargin(), yStart, timeStamp);
@@ -477,7 +481,7 @@ public class Report {
         }
     }
 
-    private String truncateText(String text, float availWidth, final PDFont font, final float fontSize) throws IOException {
+    private String truncateText(final String text, final float availWidth, final PDFont font, final float fontSize) throws IOException {
         if (text != null) {
             String content = text;
 
@@ -501,6 +505,9 @@ public class Report {
     private PDPage createPage() {
         PDPage page = new PDPage();
         page.setMediaBox(getPageSize());
+
+        pdfDocument.addPage(page);  // add the page to the document
+
         return page;
     }
 

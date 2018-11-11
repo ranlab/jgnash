@@ -98,7 +98,7 @@ class PDFBoxTableTest {
             final float padding = 2.5f;
             boolean landscape = true;
 
-            final Report report = new Report();
+            final Report report = new Report(doc);
             report.setTableFont(PDType1Font.COURIER);
             report.setHeaderFont(PDType1Font.HELVETICA_BOLD);
             report.setCellPadding(padding);
@@ -110,8 +110,8 @@ class PDFBoxTableTest {
 
             assertEquals(1, report.getGroups(new BasicTestReport()).size());
 
-            report.addTable(doc, new BasicTestReport(), "Test Report", DateTimeFormatter.ISO_DATE.format(LocalDate.now()));
-            report.addFooter(doc);
+            report.addTable(new BasicTestReport(), "Test Report", DateTimeFormatter.ISO_DATE.format(LocalDate.now()));
+            report.addFooter();
 
             doc.save(tempPath.toFile());
 
@@ -153,7 +153,7 @@ class PDFBoxTableTest {
             final float padding = 2.5f;
             boolean landscape = true;
 
-            final Report report = new Report();
+            final Report report = new Report(doc);
             report.setTableFont(PDType1Font.COURIER);
             report.setHeaderFont(PDType1Font.HELVETICA_BOLD);
             report.setCellPadding(padding);
@@ -165,8 +165,8 @@ class PDFBoxTableTest {
 
             assertEquals(2, report.getGroups(new CrossTabTestReport()).size());
 
-            report.addTable(doc, new CrossTabTestReport(), "Test Report", DateTimeFormatter.ISO_DATE.format(LocalDate.now()));
-            report.addFooter(doc);
+            report.addTable(new CrossTabTestReport(), "Test Report", DateTimeFormatter.ISO_DATE.format(LocalDate.now()));
+            report.addFooter();
 
             doc.save(tempPath.toFile());
 
