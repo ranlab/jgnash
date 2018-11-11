@@ -39,8 +39,9 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
 import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.TreeSet;
@@ -51,7 +52,7 @@ import static jgnash.util.LogUtil.logSevere;
  * Base report format definition.
  * <p>
  * Units of measure is in Points
- *
+ * <p>
  * The origin of a PDFBox page is the bottom left corner
  *
  * @author Craig Cavanaugh
@@ -209,26 +210,27 @@ public class Report {
         }
     }
 
-    public List<String> getGroups(final AbstractReportTableModel tableModel) {
-
-        final Set<String> groups = new TreeSet<>();
+    public static Set<GroupInfo> getGroups(final AbstractReportTableModel tableModel) {
+        final Map<String, GroupInfo> groupInfoMap = new HashMap<>();
 
         for (int c = 0; c < tableModel.getColumnCount(); c++) {
-
             final ColumnStyle columnStyle = tableModel.getColumnStyle(c);
 
             if (columnStyle == ColumnStyle.GROUP || columnStyle == ColumnStyle.GROUP_NO_HEADER) {
                 for (int r = 0; r < tableModel.getRowCount(); r++) {
-                    groups.add(tableModel.getValueAt(r, c).toString());
+                    final GroupInfo groupInfo = groupInfoMap.computeIfAbsent(tableModel.getValueAt(r, c).toString(),
+                            GroupInfo::new);
+
+                    groupInfo.rows++;
                 }
             }
         }
 
-        return new ArrayList<>(groups);
+        return new TreeSet<>(groupInfoMap.values());
     }
 
     private int addTableSection(final AbstractReportTableModel table, final PDPageContentStream contentStream,
-                                 final int startRow, float[] columnWidths, float yStart) throws IOException {
+                                final int startRow, float[] columnWidths, float yStart) throws IOException {
 
         int rowsWritten = 0;    // the return value of the number of rows written
 
@@ -555,5 +557,34 @@ public class Report {
         return widths;
     }
 
+    /**
+     * Support class for reporting the number of groups and rows per group within a report table.
+     */
+    public static class GroupInfo implements Comparable<GroupInfo> {
+        final String group;
+        public int rows;
 
+        GroupInfo(@NotNull String group) {
+            Objects.requireNonNull(group);
+
+            this.group = group;
+        }
+
+        @Override
+        public int compareTo(final GroupInfo o) {
+            return group.compareTo(o.group);
+        }
+
+        @Override
+        public boolean equals(final Object o) {
+            if (o instanceof GroupInfo) {
+                return group.equals(((GroupInfo) o).group);
+            }
+            return false;
+        }
+
+        public int hashCode() {
+            return group.hashCode();
+        }
+    }
 }

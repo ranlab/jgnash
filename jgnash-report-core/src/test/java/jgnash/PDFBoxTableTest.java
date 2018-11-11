@@ -108,7 +108,8 @@ class PDFBoxTableTest {
             report.setFooterFont(PDType1Font.TIMES_ITALIC);
             report.setEllipsis("…");
 
-            assertEquals(1, report.getGroups(new BasicTestReport()).size());
+            assertEquals(1, Report.getGroups(new BasicTestReport()).size());
+            assertEquals(80, ((Report.GroupInfo) Report.getGroups(new BasicTestReport()).toArray()[0]).rows);
 
             report.addTable(new BasicTestReport(), "Test Report", DateTimeFormatter.ISO_DATE.format(LocalDate.now()));
             report.addFooter();
@@ -163,7 +164,8 @@ class PDFBoxTableTest {
             report.setFooterFont(PDType1Font.TIMES_ITALIC);
             report.setEllipsis("…");
 
-            assertEquals(2, report.getGroups(new CrossTabTestReport()).size());
+            assertEquals(2, Report.getGroups(new CrossTabTestReport()).size());
+            assertEquals(40, ((Report.GroupInfo) Report.getGroups(new CrossTabTestReport()).toArray()[0]).rows);
 
             report.addTable(new CrossTabTestReport(), "Test Report", DateTimeFormatter.ISO_DATE.format(LocalDate.now()));
             report.addFooter();
