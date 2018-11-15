@@ -66,6 +66,18 @@ public abstract class AbstractReportTableModel extends AbstractTableModel {
         return column;
     }
 
+    public String getGroup(final int row) {
+        String group = "";
+
+        for (int i = 0; i < getColumnCount(); i++) {
+            if (getColumnStyle(i) == ColumnStyle.GROUP) {
+                group = getValueAt(row, i).toString();
+            }
+        }
+
+        return group;
+    }
+
     @NotNull
     public int[] getColumnsToHide() {
         return new int[0];  // return an empty array by default

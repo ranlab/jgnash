@@ -443,6 +443,10 @@ class PDFBoxTableTest {
         @Override
         public Object getValueAt(int rowIndex, int columnIndex) {
 
+            if (rowIndex > getRowCount() - 1) {
+                throw new IndexOutOfBoundsException();
+            }
+
             switch (columnIndex) {
                 case 0:
                     return LocalDate.now().plusDays(rowIndex);

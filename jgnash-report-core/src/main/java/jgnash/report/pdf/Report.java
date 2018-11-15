@@ -184,28 +184,31 @@ public class Report {
 
         float[] columnWidths = getColumnWidths(table);
 
-        int rowsWritten = 0;  // tracks the number of rows written
+        for (final GroupInfo groupInfo : getGroups(table)) {
 
-        while (rowsWritten < table.getRowCount()) {
+            int row = 0;  // tracks the last written row
 
-            final PDPage page = createPage();
+            while (row < table.getRowCount()) {
 
-            float yStart = 0;   // additional  margin down from the top of the page
+                final PDPage page = createPage();
 
-            try (final PDPageContentStream contentStream = new PDPageContentStream(pdfDocument, page)) {
+                float yStart = 0;   // additional  margin down from the top of the page
 
-                // add the table title if just starting
-                if (title != null && !title.isEmpty() && rowsWritten == 0) {
-                    yStart += getBaseFontSize() + getMargin();
-                    addTableTitle(contentStream, title, subTitle, yStart);
+                try (final PDPageContentStream contentStream = new PDPageContentStream(pdfDocument, page)) {
+
+                    // add the table title if just starting
+                    if (title != null && !title.isEmpty() && row == 0) {
+                        yStart += getBaseFontSize() + getMargin();
+                        addTableTitle(contentStream, title, subTitle, yStart);
+                    }
+
+                    // write a section of the table
+                    row = addTableSection(table, groupInfo.group, contentStream, row, columnWidths, yStart);
+
+                } catch (final IOException e) {
+                    logSevere(Report.class, e);
+                    throw (e);
                 }
-
-                // write a section of the table
-                rowsWritten += addTableSection(table, contentStream, rowsWritten, columnWidths, yStart);
-
-            } catch (final IOException e) {
-                logSevere(Report.class, e);
-                throw (e);
             }
         }
     }
@@ -229,8 +232,11 @@ public class Report {
         return new TreeSet<>(groupInfoMap.values());
     }
 
-    private int addTableSection(final AbstractReportTableModel table, final PDPageContentStream contentStream,
-                                final int startRow, float[] columnWidths, float yStart) throws IOException {
+    private int addTableSection(final AbstractReportTableModel table, @NotNull final String group,
+                                final PDPageContentStream contentStream, final int startRow, float[] columnWidths,
+                                float yStart) throws IOException {
+
+        Objects.requireNonNull(group);
 
         int rowsWritten = 0;    // the return value of the number of rows written
 
@@ -268,37 +274,43 @@ public class Report {
         int row = startRow;
 
         while (yPos > getMargin() + getTableRowHeight() && row < table.getRowCount()) {
-            xPos = getMargin() + getCellPadding();
-            yPos -= getTableRowHeight();
 
-            col = 0;
-            for (int i = 0; i < table.getColumnCount(); i++) {
+            final String rowGroup = table.getGroup(row);
 
-                if (table.isColumnVisible(i)) {
+            if (group.equals(rowGroup)) {
 
-                    final Object value = table.getValueAt(row, i);
+                xPos = getMargin() + getCellPadding();
+                yPos -= getTableRowHeight();
 
-                    if (value != null) {
-                        float shift = 0;
-                        float availWidth = columnWidths[col] - getCellPadding() * 2;
+                col = 0;
+                for (int i = 0; i < table.getColumnCount(); i++) {
 
-                        final String text = truncateText(formatValue(table.getValueAt(row, i), i, table), availWidth,
-                                getTableFont(), getBaseFontSize());
+                    if (table.isColumnVisible(i)) {
 
-                        if (rightAlign(i, table)) {
-                            shift = availWidth - getStringWidth(text, getTableFont(), getBaseFontSize());
+                        final Object value = table.getValueAt(row, i);
+
+                        if (value != null) {
+                            float shift = 0;
+                            float availWidth = columnWidths[col] - getCellPadding() * 2;
+
+                            final String text = truncateText(formatValue(table.getValueAt(row, i), i, table), availWidth,
+                                    getTableFont(), getBaseFontSize());
+
+                            if (rightAlign(i, table)) {
+                                shift = availWidth - getStringWidth(text, getTableFont(), getBaseFontSize());
+                            }
+
+                            drawText(contentStream, xPos + shift, yPos, text);
                         }
 
-                        drawText(contentStream, xPos + shift, yPos, text);
+                        xPos += columnWidths[col];
+
+                        col++;
                     }
-
-                    xPos += columnWidths[col];
-
-                    col++;
                 }
-            }
 
-            rowsWritten++;
+                rowsWritten++;
+            }
             row++;
         }
 
@@ -328,7 +340,7 @@ public class Report {
         // end of last column
         drawLine(contentStream, xPos, yPos, xPos, yPos - getTableRowHeight() * (rowsWritten + 1));
 
-        return rowsWritten;
+        return row;
     }
 
     private String formatValue(final Object value, final int column, final AbstractReportTableModel tableModel) {
