@@ -88,6 +88,8 @@ public class Report {
 
     final float FOOTER_SCALE = 0.80f;
 
+    final float DEFAULT_LINE_WIDTH = 0.20f;
+
     final PDDocument pdfDocument;
 
     /**
@@ -397,6 +399,7 @@ public class Report {
 
     private void drawLine(final PDPageContentStream contentStream, final float xStart, final float yStart,
                           final float xEnd, final float yEnd) throws IOException {
+        contentStream.setLineWidth(DEFAULT_LINE_WIDTH);
         contentStream.moveTo(xStart, yStart);
         contentStream.lineTo(xEnd, yEnd);
         contentStream.stroke();
