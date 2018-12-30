@@ -53,7 +53,8 @@ import static jgnash.util.LogUtil.logSevere;
  * <p>
  * Units of measure is in Points
  * <p>
- * The origin of a PDFBox page is the bottom left corner
+ * The origin of a PDFBox page is the bottom left corner vs. a report being created from the top down.  Report layout
+ * logic is from top down with use of a method to convert to PDF coordinate system.
  *
  * @author Craig Cavanaugh
  * <p>
@@ -184,9 +185,13 @@ public class Report {
 
     public void addTable(final AbstractReportTableModel table, final String title, final String subTitle) throws IOException {
 
-        float[] columnWidths = getColumnWidths(table);
+        final float[] columnWidths = getColumnWidths(table);
 
-        for (final GroupInfo groupInfo : getGroups(table)) {
+        final Set<GroupInfo> groupInfoSet = getGroups(table);
+
+        float yStart;
+
+        for (final GroupInfo groupInfo : groupInfoSet) {
 
             int row = 0;  // tracks the last written row
 
@@ -194,15 +199,22 @@ public class Report {
 
                 final PDPage page = createPage();
 
-                float yStart = 0;   // additional  margin down from the top of the page
+                yStart = 0;   // additional margin down from the top of the page
 
                 try (final PDPageContentStream contentStream = new PDPageContentStream(pdfDocument, page)) {
 
-                    // add the table title if just starting
-                    if (title != null && !title.isEmpty() && row == 0) {
+                    // add the table title if just starting and it's the 1st page of the report
+                    if (title != null && !title.isEmpty() && row == 0 && pdfDocument.getNumberOfPages() == 1) {
                         yStart += getBaseFontSize() + getMargin();
-                        addTableTitle(contentStream, title, subTitle, yStart);
+                        yStart = addReportTitle(contentStream, title, subTitle, yStart);
                     }
+
+                    // add the group subtitle
+                    if (groupInfoSet.size() > 1) {
+                        yStart += getBaseFontSize(); // add a margin under the title
+                        yStart = addTableTitle(contentStream, groupInfo.group, yStart);
+                    }
+
 
                     // write a section of the table
                     row = addTableSection(table, groupInfo.group, contentStream, row, columnWidths, yStart);
@@ -213,6 +225,15 @@ public class Report {
                 }
             }
         }
+    }
+
+    /**
+     * Simply transform function to convert from a upper origin to a lower pdf page origin.
+     * @param y document y position
+     * @return returns the pdf page y position
+     */
+    private float docYToPageY(final float y) {
+        return getPageSize().getHeight() - y;
     }
 
     public static Set<GroupInfo> getGroups(final AbstractReportTableModel tableModel) {
@@ -418,27 +439,51 @@ public class Report {
     /**
      * Adds a Title to the document and returns the height consumed
      *
-     * @param title   title
-     * @param yMargin start
+     * @param title title
+     * @param yStart  table title position
+     * @return current y document position
      * @throws IOException exception
      */
-    private void addTableTitle(final PDPageContentStream contentStream, final String title, final String subTitle,
-                               final float yMargin) throws IOException {
+    private float addTableTitle(final PDPageContentStream contentStream, final String title, final float yStart)
+            throws IOException {
+
+        float yDoc = yStart + (getBaseFontSize() * 2);  // add for font height
 
         float width = getStringWidth(title, getHeaderFont(), getBaseFontSize() * 2);
         float xPos = (getAvailableWidth() / 2f) - (width / 2f) + getMargin();
-        float yPos = getPageSize().getHeight() - yMargin;
 
         contentStream.setFont(getHeaderFont(), getBaseFontSize() * 2);
-        drawText(contentStream, xPos, yPos, title);
+        drawText(contentStream, xPos, docYToPageY(yDoc), title);
+
+        return yDoc;    // returns new y document position
+    }
+
+    /**
+     * Adds a Title and subtitle to the document and returns the height consumed
+     *
+     * @param title   title
+     * @param yMargin start
+     * @return document y position
+     * @throws IOException exception
+     */
+    private float addReportTitle(final PDPageContentStream contentStream, final String title, final String subTitle,
+                                final float yMargin) throws IOException {
+
+        float width = getStringWidth(title, getHeaderFont(), getBaseFontSize() * 2);
+        float xPos = (getAvailableWidth() / 2f) - (width / 2f) + getMargin();
+        float docY = yMargin;
+
+        contentStream.setFont(getHeaderFont(), getBaseFontSize() * 2);
+        drawText(contentStream, xPos, docYToPageY(docY), title);
 
         width = getStringWidth(subTitle, getFooterFont(), getFooterFontSize());
         xPos = (getAvailableWidth() / 2f) - (width / 2f) + getMargin();
-        yPos = yPos - getFooterFontSize() * 1.5f;
+        docY = docY + getFooterFontSize() * 1.5f;
 
         contentStream.setFont(getFooterFont(), getFooterFontSize());
-        drawText(contentStream, xPos, yPos, subTitle);
+        drawText(contentStream, xPos, docYToPageY(docY), subTitle);
 
+        return docY;
     }
 
     public void addFooter() throws IOException {

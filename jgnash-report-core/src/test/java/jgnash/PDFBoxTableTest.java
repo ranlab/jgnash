@@ -469,7 +469,7 @@ class PDFBoxTableTest {
                 case 9:
                     return new BigDecimal(1000 + rowIndex * 10);
                 case 10:
-                    return rowIndex % 2 == 0 ? "income" : "expense";
+                    return rowIndex % 2 == 0 ? "Income" : "Expense";
                 default:
                     return null;
             }
