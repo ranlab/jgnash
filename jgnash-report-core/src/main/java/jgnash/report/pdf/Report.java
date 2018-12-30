@@ -93,11 +93,6 @@ public class Report {
 
     final PDDocument pdfDocument;
 
-    /**
-     * Global, current y location for the current page
-     */
-    float yPos;
-
     public Report(final PDDocument pdfDocument) {
         this.pdfDocument = pdfDocument;
 
@@ -183,41 +178,41 @@ public class Report {
         this.footerFont = footerFont;
     }
 
-    public void addTable(final AbstractReportTableModel table, final String title, final String subTitle) throws IOException {
+    public void addTable(final AbstractReportTableModel reportModel, final String title, final String subTitle) throws IOException {
 
-        final float[] columnWidths = getColumnWidths(table);
+        final float[] columnWidths = getColumnWidths(reportModel);
 
-        final Set<GroupInfo> groupInfoSet = getGroups(table);
+        final Set<GroupInfo> groupInfoSet = getGroups(reportModel);
 
-        float yStart;
+        float docY;
 
         for (final GroupInfo groupInfo : groupInfoSet) {
 
             int row = 0;  // tracks the last written row
 
-            while (row < table.getRowCount()) {
+            while (row < reportModel.getRowCount()) {
 
                 final PDPage page = createPage();
 
-                yStart = 0;   // additional margin down from the top of the page
+                docY = 0;   // start at top of the page
 
                 try (final PDPageContentStream contentStream = new PDPageContentStream(pdfDocument, page)) {
 
                     // add the table title if just starting and it's the 1st page of the report
                     if (title != null && !title.isEmpty() && row == 0 && pdfDocument.getNumberOfPages() == 1) {
-                        yStart += getBaseFontSize() + getMargin();
-                        yStart = addReportTitle(contentStream, title, subTitle, yStart);
+                        docY += getBaseFontSize() + getMargin();
+                        docY = addReportTitle(contentStream, title, subTitle, docY);
                     }
 
                     // add the group subtitle
                     if (groupInfoSet.size() > 1) {
-                        yStart += getBaseFontSize(); // add a margin under the title
-                        yStart = addTableTitle(contentStream, groupInfo.group, yStart);
+                        docY += getBaseFontSize(); // add a margin under the title
+                        docY = addTableTitle(contentStream, groupInfo.group, docY);
                     }
 
 
-                    // write a section of the table
-                    row = addTableSection(table, groupInfo.group, contentStream, row, columnWidths, yStart);
+                    // write a section of the table and save the last row written for next page if needed
+                    row = addTableSection(reportModel, groupInfo.group, contentStream, row, columnWidths, docY);
 
                 } catch (final IOException e) {
                     logSevere(Report.class, e);
@@ -255,7 +250,19 @@ public class Report {
         return new TreeSet<>(groupInfoMap.values());
     }
 
-    private int addTableSection(final AbstractReportTableModel table, @NotNull final String group,
+    /**
+     * Writes a table section to the report
+     *
+     * @param reportModel report model
+     * @param group report group
+     * @param contentStream PDF content stream
+     * @param startRow starting row
+     * @param columnWidths column widths
+     * @param yStart start location from top of the page
+     * @return returns the last reported row of the group
+     * @throws IOException  IO exception
+     */
+    private int addTableSection(final AbstractReportTableModel reportModel, @NotNull final String group,
                                 final PDPageContentStream contentStream, final int startRow, float[] columnWidths,
                                 float yStart) throws IOException {
 
@@ -265,7 +272,7 @@ public class Report {
 
         float yTop = getPageSize().getHeight() - getMargin() - yStart;
 
-        yPos = yTop;    // start of a new page
+        float yPos = yTop;    // start of a new page
 
         float xPos = getMargin() + getCellPadding();
 
@@ -281,9 +288,9 @@ public class Report {
         contentStream.setNonStrokingColor(headerTextColor);
 
         int col = 0;
-        for (int i = 0; i < table.getColumnCount(); i++) {
-            if (table.isColumnVisible(i)) {
-                drawText(contentStream, xPos, yPos, table.getColumnName(i));
+        for (int i = 0; i < reportModel.getColumnCount(); i++) {
+            if (reportModel.isColumnVisible(i)) {
+                drawText(contentStream, xPos, yPos, reportModel.getColumnName(i));
                 xPos += columnWidths[col];
 
                 col++;
@@ -296,9 +303,9 @@ public class Report {
 
         int row = startRow;
 
-        while (yPos > getMargin() + getTableRowHeight() && row < table.getRowCount()) {
+        while (yPos > getMargin() + getTableRowHeight() && row < reportModel.getRowCount()) {
 
-            final String rowGroup = table.getGroup(row);
+            final String rowGroup = reportModel.getGroup(row);
 
             if (group.equals(rowGroup)) {
 
@@ -306,20 +313,20 @@ public class Report {
                 yPos -= getTableRowHeight();
 
                 col = 0;
-                for (int i = 0; i < table.getColumnCount(); i++) {
+                for (int i = 0; i < reportModel.getColumnCount(); i++) {
 
-                    if (table.isColumnVisible(i)) {
+                    if (reportModel.isColumnVisible(i)) {
 
-                        final Object value = table.getValueAt(row, i);
+                        final Object value = reportModel.getValueAt(row, i);
 
                         if (value != null) {
                             float shift = 0;
                             float availWidth = columnWidths[col] - getCellPadding() * 2;
 
-                            final String text = truncateText(formatValue(table.getValueAt(row, i), i, table), availWidth,
+                            final String text = truncateText(formatValue(reportModel.getValueAt(row, i), i, reportModel), availWidth,
                                     getTableFont(), getBaseFontSize());
 
-                            if (rightAlign(i, table)) {
+                            if (rightAlign(i, reportModel)) {
                                 shift = availWidth - getStringWidth(text, getTableFont(), getBaseFontSize());
                             }
 
@@ -351,8 +358,8 @@ public class Report {
         xPos = getMargin();
 
         col = 0;
-        for (int i = 0; i < table.getColumnCount(); i++) {
-            if (table.isColumnVisible(i)) {
+        for (int i = 0; i < reportModel.getColumnCount(); i++) {
+            if (reportModel.isColumnVisible(i)) {
                 drawLine(contentStream, xPos, yPos, xPos, yPos - getTableRowHeight() * (rowsWritten + 1));
                 xPos += columnWidths[col];
 
@@ -366,12 +373,12 @@ public class Report {
         return row;
     }
 
-    private String formatValue(final Object value, final int column, final AbstractReportTableModel tableModel) {
+    private String formatValue(final Object value, final int column, final AbstractReportTableModel reportModel) {
         if (value == null) {
             return " ";
         }
 
-        final ColumnStyle columnStyle = tableModel.getColumnStyle(column);
+        final ColumnStyle columnStyle = reportModel.getColumnStyle(column);
 
         switch (columnStyle) {
             case TIMESTAMP:
@@ -381,21 +388,21 @@ public class Report {
                 final DateTimeFormatter dateFormatter = DateUtils.getShortDateFormatter();
                 return dateFormatter.format((LocalDate) value);
             case SHORT_AMOUNT:
-                final NumberFormat shortNumberFormat = CommodityFormat.getShortNumberFormat(tableModel.getCurrency());
+                final NumberFormat shortNumberFormat = CommodityFormat.getShortNumberFormat(reportModel.getCurrency());
                 return shortNumberFormat.format(value);
             case BALANCE:
             case BALANCE_WITH_SUM:
             case BALANCE_WITH_SUM_AND_GLOBAL:
             case AMOUNT_SUM:
-                final NumberFormat numberFormat = CommodityFormat.getFullNumberFormat(tableModel.getCurrency());
+                final NumberFormat numberFormat = CommodityFormat.getFullNumberFormat(reportModel.getCurrency());
                 return numberFormat.format(value);
             default:
                 return value.toString();
         }
     }
 
-    private boolean rightAlign(final int column, final AbstractReportTableModel tableModel) {
-        final ColumnStyle columnStyle = tableModel.getColumnStyle(column);
+    private boolean rightAlign(final int column, final AbstractReportTableModel reportModel) {
+        final ColumnStyle columnStyle = reportModel.getColumnStyle(column);
 
         switch (columnStyle) {
             case SHORT_AMOUNT:
@@ -447,15 +454,15 @@ public class Report {
     private float addTableTitle(final PDPageContentStream contentStream, final String title, final float yStart)
             throws IOException {
 
-        float yDoc = yStart + (getBaseFontSize() * 2);  // add for font height
+        float docY = yStart + (getBaseFontSize() * 2);  // add for font height
 
         float width = getStringWidth(title, getHeaderFont(), getBaseFontSize() * 2);
         float xPos = (getAvailableWidth() / 2f) - (width / 2f) + getMargin();
 
         contentStream.setFont(getHeaderFont(), getBaseFontSize() * 2);
-        drawText(contentStream, xPos, docYToPageY(yDoc), title);
+        drawText(contentStream, xPos, docYToPageY(docY), title);
 
-        return yDoc;    // returns new y document position
+        return docY;    // returns new y document position
     }
 
     /**
@@ -551,12 +558,12 @@ public class Report {
         this.ellipsis = ellipsis;
     }
 
-    private float[] getColumnWidths(final AbstractReportTableModel table) throws IOException {
+    private float[] getColumnWidths(final AbstractReportTableModel reportModel) throws IOException {
 
         int visibleColumnCount = 0;
 
-        for (int i = 0; i < table.getColumnCount(); i++) {
-            if (table.isColumnVisible(i)) {
+        for (int i = 0; i < reportModel.getColumnCount(); i++) {
+            if (reportModel.isColumnVisible(i)) {
                 visibleColumnCount++;
             }
         }
@@ -569,19 +576,19 @@ public class Report {
         int flexColumns = 0;
 
         int col = 0;
-        for (int i = 0; i < table.getColumnCount(); i++) {
-            if (table.isColumnVisible(i)) {
+        for (int i = 0; i < reportModel.getColumnCount(); i++) {
+            if (reportModel.isColumnVisible(i)) {
 
-                final String protoValue = table.getColumnPrototypeValueAt(i);
+                final String protoValue = reportModel.getColumnPrototypeValueAt(i);
 
-                float headerWidth = getStringWidth(table.getColumnName(i), getHeaderFont(), getBaseFontSize()) + getCellPadding() * 2;
+                float headerWidth = getStringWidth(reportModel.getColumnName(i), getHeaderFont(), getBaseFontSize()) + getCellPadding() * 2;
                 float cellTextWidth = getStringWidth(protoValue, getTableFont(), getBaseFontSize()) + getCellPadding() * 2;
 
                 widths[col] = Math.max(headerWidth, cellTextWidth);
 
                 measuredWidth += widths[col];
 
-                if (table.isColumnFixedWidth(i)) {
+                if (reportModel.isColumnFixedWidth(i)) {
                     fixedWidth += widths[col];
                 } else {
                     flexColumns++;
@@ -605,9 +612,9 @@ public class Report {
         }
 
         col = 0;
-        for (int i = 0; i < table.getColumnCount(); i++) {
-            if (table.isColumnVisible(i)) {
-                if (compressAll || !table.isColumnFixedWidth(i)) {
+        for (int i = 0; i < reportModel.getColumnCount(); i++) {
+            if (reportModel.isColumnVisible(i)) {
+                if (compressAll || !reportModel.isColumnFixedWidth(i)) {
                     widths[col] += widthDelta;
                 }
                 col++;
