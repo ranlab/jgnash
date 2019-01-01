@@ -194,22 +194,19 @@ public class Report {
 
                 final PDPage page = createPage();
 
-                docY = 0;   // start at top of the page
+                docY = getMargin();   // start at top of the page with the margin
 
                 try (final PDPageContentStream contentStream = new PDPageContentStream(pdfDocument, page)) {
 
                     // add the table title if just starting and it's the 1st page of the report
                     if (title != null && !title.isEmpty() && row == 0 && pdfDocument.getNumberOfPages() == 1) {
-                        docY += getBaseFontSize() + getMargin();
                         docY = addReportTitle(contentStream, title, subTitle, docY);
                     }
 
-                    // add the group subtitle
+                    // add the group subtitle if needed
                     if (groupInfoSet.size() > 1) {
-                        docY += getBaseFontSize(); // add a margin under the title
                         docY = addTableTitle(contentStream, groupInfo.group, docY);
                     }
-
 
                     // write a section of the table and save the last row written for next page if needed
                     row = addTableSection(reportModel, groupInfo.group, contentStream, row, columnWidths, docY);
@@ -251,7 +248,7 @@ public class Report {
     }
 
     /**
-     * Writes a table section to the report
+     * Writes a table section to the report.
      *
      * @param reportModel report model
      * @param group report group
@@ -270,7 +267,8 @@ public class Report {
 
         int rowsWritten = 0;    // the return value of the number of rows written
 
-        float yTop = getPageSize().getHeight() - getMargin() - yStart;
+        // establish start location, use the row height as the vertical margin between title and table
+        float yTop = getPageSize().getHeight() - getTableRowHeight() - yStart;
 
         float yPos = yTop;    // start of a new page
 
@@ -447,14 +445,14 @@ public class Report {
      * Adds a Title to the document and returns the height consumed
      *
      * @param title title
-     * @param yStart  table title position
+     * @param yStart  table title position from the top of the page
      * @return current y document position
      * @throws IOException exception
      */
     private float addTableTitle(final PDPageContentStream contentStream, final String title, final float yStart)
             throws IOException {
 
-        float docY = yStart + (getBaseFontSize() * 2);  // add for font height
+        float docY = yStart + getBaseFontSize();  // add for font height
 
         float width = getStringWidth(title, getHeaderFont(), getBaseFontSize() * 2);
         float xPos = (getAvailableWidth() / 2f) - (width / 2f) + getMargin();
@@ -469,16 +467,16 @@ public class Report {
      * Adds a Title and subtitle to the document and returns the height consumed
      *
      * @param title   title
-     * @param yMargin start
+     * @param yStart start from the top of the page
      * @return document y position
      * @throws IOException exception
      */
     private float addReportTitle(final PDPageContentStream contentStream, final String title, final String subTitle,
-                                final float yMargin) throws IOException {
+                                final float yStart) throws IOException {
 
         float width = getStringWidth(title, getHeaderFont(), getBaseFontSize() * 2);
         float xPos = (getAvailableWidth() / 2f) - (width / 2f) + getMargin();
-        float docY = yMargin;
+        float docY = yStart + getBaseFontSize();
 
         contentStream.setFont(getHeaderFont(), getBaseFontSize() * 2);
         drawText(contentStream, xPos, docYToPageY(docY), title);
@@ -489,6 +487,8 @@ public class Report {
 
         contentStream.setFont(getFooterFont(), getFooterFontSize());
         drawText(contentStream, xPos, docYToPageY(docY), subTitle);
+
+        docY = docY + getFooterFontSize() * 2.0f;   // add a margin below the sub title
 
         return docY;
     }
