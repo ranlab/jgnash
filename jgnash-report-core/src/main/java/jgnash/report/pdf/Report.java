@@ -267,8 +267,8 @@ public class Report {
 
         int rowsWritten = 0;    // the return value of the number of rows written
 
-        // establish start location, use the row height as the vertical margin between title and table
-        float yTop = getPageSize().getHeight() - getTableRowHeight() - yStart;
+        // establish start location, use half the row height as the vertical margin between title and table
+        float yTop = getPageSize().getHeight() - getTableRowHeight() / 2 - yStart;
 
         float yPos = yTop;    // start of a new page
 
@@ -442,7 +442,7 @@ public class Report {
     }
 
     /**
-     * Adds a Title to the document and returns the height consumed
+     * Adds a title to the table and returns the new document position
      *
      * @param title title
      * @param yStart  table title position from the top of the page
@@ -452,12 +452,10 @@ public class Report {
     private float addTableTitle(final PDPageContentStream contentStream, final String title, final float yStart)
             throws IOException {
 
-        float docY = yStart + getBaseFontSize();  // add for font height
+        float docY = yStart + getBaseFontSize() * 1.5f;  // add for font height
+        float xPos = getMargin();
 
-        float width = getStringWidth(title, getHeaderFont(), getBaseFontSize() * 2);
-        float xPos = (getAvailableWidth() / 2f) - (width / 2f) + getMargin();
-
-        contentStream.setFont(getHeaderFont(), getBaseFontSize() * 2);
+        contentStream.setFont(getHeaderFont(), getBaseFontSize() * 1.5f);
         drawText(contentStream, xPos, docYToPageY(docY), title);
 
         return docY;    // returns new y document position
@@ -483,12 +481,12 @@ public class Report {
 
         width = getStringWidth(subTitle, getFooterFont(), getFooterFontSize());
         xPos = (getAvailableWidth() / 2f) - (width / 2f) + getMargin();
-        docY = docY + getFooterFontSize() * 1.5f;
+        docY += getFooterFontSize() * 1.5f;
 
         contentStream.setFont(getFooterFont(), getFooterFontSize());
         drawText(contentStream, xPos, docYToPageY(docY), subTitle);
 
-        docY = docY + getFooterFontSize() * 2.0f;   // add a margin below the sub title
+        docY += getFooterFontSize() * 2.0f;   // add a margin below the sub title
 
         return docY;
     }
