@@ -23,16 +23,19 @@ import jgnash.resource.util.ResourceUtils;
 import jgnash.text.CommodityFormat;
 import jgnash.time.DateUtils;
 import jgnash.util.NotNull;
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDFont;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
+import org.apache.commons.lang3.tuple.Pair;
 
 import java.awt.Color;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.text.MessageFormat;
 import java.text.NumberFormat;
 import java.time.LocalDate;
@@ -209,11 +212,26 @@ public class Report {
                     }
 
                     // write a section of the table and save the last row written for next page if needed
-                    row = addTableSection(reportModel, groupInfo.group, contentStream, row, columnWidths, docY);
+                    final Pair<Integer, Float> pair
+                            = addTableSection(reportModel, groupInfo.group, contentStream, row, columnWidths, docY);
+
+                    row = pair.getLeft();
 
                 } catch (final IOException e) {
                     logSevere(Report.class, e);
                     throw (e);
+                }
+
+                // check to see if this table has summation information and add a summation footer
+                if (groupInfo.hasSummation() && row == reportModel.getRowCount()) {
+
+                    // TODO, make sure the end of the page has not been reached
+                    try (final PDPageContentStream contentStream = new PDPageContentStream(pdfDocument, page, PDPageContentStream.AppendMode.APPEND, false)) {
+                        docY = addTableFooter(groupInfo, contentStream, columnWidths, docY);
+                    } catch (final IOException e) {
+                        logSevere(Report.class, e);
+                        throw (e);
+                    }
                 }
             }
         }
@@ -244,6 +262,24 @@ public class Report {
             }
         }
 
+        // perform summation
+        for (int r = 0; r < tableModel.getRowCount(); r++) {
+            final GroupInfo groupInfo = groupInfoMap.get(tableModel.getGroup(r));
+
+            for (int c = 0; c < tableModel.getColumnCount(); c++) {
+                if (tableModel.getColumnClass(c) == BigDecimal.class) {
+                    switch (tableModel.getColumnStyle(c)) {
+                        case AMOUNT_SUM:
+                        case BALANCE_WITH_SUM:
+                        case BALANCE_WITH_SUM_AND_GLOBAL:
+                            groupInfo.addValue(c, (BigDecimal) tableModel.getValueAt(r, c));
+                        default:
+                            break;
+                    }
+                }
+            }
+        }
+
         return new TreeSet<>(groupInfoMap.values());
     }
 
@@ -256,12 +292,13 @@ public class Report {
      * @param startRow starting row
      * @param columnWidths column widths
      * @param yStart start location from top of the page
-     * @return returns the last reported row of the group
+     * @return returns the last reported row of the group and yDoc location
      * @throws IOException  IO exception
      */
-    private int addTableSection(final AbstractReportTableModel reportModel, @NotNull final String group,
-                                final PDPageContentStream contentStream, final int startRow, float[] columnWidths,
-                                float yStart) throws IOException {
+    @SuppressWarnings("SuspiciousNameCombination")
+    private Pair<Integer, Float> addTableSection(final AbstractReportTableModel reportModel, @NotNull final String group,
+                                                 final PDPageContentStream contentStream, final int startRow, float[] columnWidths,
+                                                 float yStart) throws IOException {
 
         Objects.requireNonNull(group);
 
@@ -368,7 +405,28 @@ public class Report {
         // end of last column
         drawLine(contentStream, xPos, yPos, xPos, yPos - getTableRowHeight() * (rowsWritten + 1));
 
-        return row;
+        // return the row and docY position
+        return new ImmutablePair<>(row, yPos);
+    }
+
+    /**
+     * Writes a table footer to the report.
+     *
+     * @param groupInfo Group info to report on*
+     * @param contentStream PDF content stream
+     * @param columnWidths column widths
+     * @param yStart start location from top of the page
+     * @return returns the y position from the top of the page
+     * @throws IOException  IO exception
+     */
+    private float addTableFooter(final GroupInfo groupInfo,
+                                final PDPageContentStream contentStream, float[] columnWidths,
+                                float yStart) throws IOException {
+
+        System.out.println(groupInfo.getValue(9));
+
+        return 0;
+
     }
 
     private String formatValue(final Object value, final int column, final AbstractReportTableModel reportModel) {
@@ -626,8 +684,23 @@ public class Report {
      * Support class for reporting the number of groups and rows per group within a report table.
      */
     public static class GroupInfo implements Comparable<GroupInfo> {
+
+        /**
+         * Group name
+         */
         final String group;
+
+        /**
+         * Number of rows in the group
+         */
         public int rows;
+
+        /**
+         * Summation values for cross tabulation of columns
+         */
+        final Map<Integer, BigDecimal> summationMap = new HashMap<>();
+
+        private boolean hasSummation = false;
 
         GroupInfo(@NotNull String group) {
             Objects.requireNonNull(group);
@@ -646,6 +719,21 @@ public class Report {
                 return group.equals(((GroupInfo) o).group);
             }
             return false;
+        }
+
+        public void addValue(final int column, final BigDecimal value) {
+            summationMap.put(column, getValue(column).add(value));
+
+            hasSummation = true;
+        }
+
+        @NotNull
+        private BigDecimal getValue(final int column) {
+            return summationMap.getOrDefault(column, BigDecimal.ZERO);
+        }
+
+        public boolean hasSummation() {
+            return hasSummation;
         }
 
         public int hashCode() {

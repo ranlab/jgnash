@@ -9,6 +9,7 @@ dependencies {
 
     compile group: 'org.apache.pdfbox', name: 'pdfbox', version: pdfBoxVersion
     compile group: 'org.apache.pdfbox', name: 'pdfbox-tools', version: pdfBoxVersion
+    compile group: 'org.apache.commons', name: 'commons-lang3', version: commonsLangVersion
 
     compile(group: 'com.lowagie', name: 'itext', version: itextVersion) {
         exclude(module: 'bcmail-jdk14')

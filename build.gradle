@@ -26,6 +26,7 @@ allprojects {
         apachePoiVersion = '4.0.0'
         commonsCsvVersion = '1.6'
         commonsTextVersion = '1.6'
+        commonsLangVersion = '3.8.1'
 
         h2Version = '1.4.197'
         hsqldbVersion = '2.4.1'
