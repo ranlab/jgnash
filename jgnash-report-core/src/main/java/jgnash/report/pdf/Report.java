@@ -86,6 +86,8 @@ public class Report {
 
     private float cellPadding = 2;
 
+    final Color footerBackGround = Color.GRAY;
+
     final Color headerBackground = Color.DARK_GRAY;
 
     final Color headerTextColor = Color.WHITE;
@@ -216,6 +218,7 @@ public class Report {
                             = addTableSection(reportModel, groupInfo.group, contentStream, row, columnWidths, docY);
 
                     row = pair.getLeft();
+                    docY = pair.getRight();
 
                 } catch (final IOException e) {
                     logSevere(Report.class, e);
@@ -405,8 +408,10 @@ public class Report {
         // end of last column
         drawLine(contentStream, xPos, yPos, xPos, yPos - getTableRowHeight() * (rowsWritten + 1));
 
+        float yDoc = getPageSize().getHeight() - (yPos - getTableRowHeight() * (rowsWritten + 1)) + getTableRowHeight() / 4f;
+
         // return the row and docY position
-        return new ImmutablePair<>(row, yPos);
+        return new ImmutablePair<>(row, yDoc);
     }
 
     /**
@@ -422,6 +427,14 @@ public class Report {
     private float addTableFooter(final GroupInfo groupInfo,
                                 final PDPageContentStream contentStream, float[] columnWidths,
                                 float yStart) throws IOException {
+
+        // add the footer background
+        contentStream.setNonStrokingColor(footerBackGround);
+        fillRect(contentStream, getMargin(), docYToPageY(yStart + 10), getAvailableWidth(), getTableRowHeight());
+
+        contentStream.setNonStrokingColor(headerTextColor);
+
+        // draw lines and columns
 
         System.out.println(groupInfo.getValue(9));
 
