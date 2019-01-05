@@ -111,6 +111,18 @@ public abstract class AbstractReportTableModel extends AbstractTableModel {
     }
 
     /**
+     * Determines if a column should be summed
+     *
+     * @param columnIndex column index to check
+     * @return true if the column values should be summed
+     */
+    public boolean isColumnSummed(final int columnIndex) {
+        return getColumnStyle(columnIndex) == ColumnStyle.BALANCE_WITH_SUM ||
+                getColumnStyle(columnIndex) == ColumnStyle.BALANCE_WITH_SUM_AND_GLOBAL
+                || getColumnStyle(columnIndex) == ColumnStyle.AMOUNT_SUM;
+    }
+
+    /**
      * Returns the longest value for the specified column
      *
      * @param columnIndex column to check
@@ -125,9 +137,7 @@ public abstract class AbstractReportTableModel extends AbstractTableModel {
         if (getColumnClass(columnIndex).isAssignableFrom(BigDecimal.class)) {
 
             // does the column need to be summed
-            boolean sum = getColumnStyle(columnIndex) == ColumnStyle.BALANCE_WITH_SUM ||
-                    getColumnStyle(columnIndex) == ColumnStyle.BALANCE_WITH_SUM_AND_GLOBAL
-                    || getColumnStyle(columnIndex) == ColumnStyle.AMOUNT_SUM;
+            boolean sum = isColumnSummed(columnIndex);
 
             // mapping to sum groups
             final HashMap<String, BigDecimal> groupMap = new HashMap<>();

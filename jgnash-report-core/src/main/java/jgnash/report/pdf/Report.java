@@ -86,7 +86,7 @@ public class Report {
 
     private float cellPadding = 2;
 
-    final Color footerBackGround = Color.GRAY;
+    final Color footerBackGround = Color.LIGHT_GRAY;
 
     final Color headerBackground = Color.DARK_GRAY;
 
@@ -230,7 +230,7 @@ public class Report {
 
                     // TODO, make sure the end of the page has not been reached
                     try (final PDPageContentStream contentStream = new PDPageContentStream(pdfDocument, page, PDPageContentStream.AppendMode.APPEND, false)) {
-                        docY = addTableFooter(groupInfo, contentStream, columnWidths, docY);
+                        docY = addTableFooter(reportModel, groupInfo, contentStream, columnWidths, docY);
                     } catch (final IOException e) {
                         logSevere(Report.class, e);
                         throw (e);
@@ -308,14 +308,10 @@ public class Report {
         int rowsWritten = 0;    // the return value of the number of rows written
 
         // establish start location, use half the row height as the vertical margin between title and table
-        float yTop = getPageSize().getHeight() - getTableRowHeight() / 2 - yStart;
-
-        float yPos = yTop;    // start of a new page
+        final float yTop = getPageSize().getHeight() - getTableRowHeight() / 2 - yStart;
 
         float xPos = getMargin() + getCellPadding();
-
-        yPos = yPos - (getTableRowHeight() / 2)
-                - ((getTableFont().getFontDescriptor().getFontBoundingBox().getHeight() / 1000 * getBaseFontSize()) / 4);
+        float yPos = yTop - getTableRowHeight() + getRowTextBaselineOffset();
 
         contentStream.setFont(getHeaderFont(), getBaseFontSize());
 
@@ -408,15 +404,25 @@ public class Report {
         // end of last column
         drawLine(contentStream, xPos, yPos, xPos, yPos - getTableRowHeight() * (rowsWritten + 1));
 
-        float yDoc = getPageSize().getHeight() - (yPos - getTableRowHeight() * (rowsWritten + 1)) + getTableRowHeight() / 4f;
+        float yDoc = getPageSize().getHeight() - (yPos - getTableRowHeight() * (rowsWritten + 1));
 
         // return the row and docY position
         return new ImmutablePair<>(row, yDoc);
     }
 
     /**
+     * Calculates the offset for row text
+     * @return offset
+     */
+    private float getRowTextBaselineOffset() {
+        return getTableRowHeight()
+                - getTableFont().getFontDescriptor().getFontBoundingBox().getHeight() / 1000 * getBaseFontSize();
+    }
+
+    /**
      * Writes a table footer to the report.
      *
+     * @param reportModel report model
      * @param groupInfo Group info to report on*
      * @param contentStream PDF content stream
      * @param columnWidths column widths
@@ -424,19 +430,54 @@ public class Report {
      * @return returns the y position from the top of the page
      * @throws IOException  IO exception
      */
-    private float addTableFooter(final GroupInfo groupInfo,
+    private float addTableFooter(final AbstractReportTableModel reportModel, final GroupInfo groupInfo,
                                 final PDPageContentStream contentStream, float[] columnWidths,
                                 float yStart) throws IOException {
 
+        float yDoc = yStart + getTableRowHeight();
+
         // add the footer background
         contentStream.setNonStrokingColor(footerBackGround);
-        fillRect(contentStream, getMargin(), docYToPageY(yStart + 10), getAvailableWidth(), getTableRowHeight());
+        fillRect(contentStream, getMargin(), docYToPageY(yDoc), getAvailableWidth(), getTableRowHeight());
 
-        contentStream.setNonStrokingColor(headerTextColor);
+        drawLine(contentStream, getMargin(), docYToPageY(yDoc), getAvailableWidth() + getMargin(), docYToPageY(yDoc));
+        drawLine(contentStream, getMargin(), docYToPageY(yDoc - getTableRowHeight()), getMargin(), docYToPageY(yDoc));
+        drawLine(contentStream, getMargin() + getAvailableWidth(), docYToPageY(yDoc - getTableRowHeight()),
+                getMargin() + getAvailableWidth(), docYToPageY(yDoc));
 
-        // draw lines and columns
 
-        System.out.println(groupInfo.getValue(9));
+        contentStream.setFont(getTableFont(), getBaseFontSize());
+        contentStream.setNonStrokingColor(Color.BLACK);
+
+        // draw summation text
+
+        float xPos = getMargin() + getCellPadding();
+
+        for (int c = 0; c < reportModel.getColumnCount(); c++) {
+
+            if (reportModel.isColumnVisible(c) && reportModel.isColumnSummed(c)) {
+
+                final Object value = groupInfo.getValue(c);
+
+                if (value != null) {
+                    float shift = 0;
+                    float availWidth = columnWidths[c] - getCellPadding() * 2;
+
+                    final String text = truncateText(formatValue(groupInfo.getValue(c), c, reportModel), availWidth,
+                            getTableFont(), getBaseFontSize());
+
+                    if (rightAlign(c, reportModel)) {
+                        shift = availWidth - getStringWidth(text, getTableFont(), getBaseFontSize());
+                    }
+
+                    drawText(contentStream, xPos + shift, docYToPageY(yDoc - getRowTextBaselineOffset()), text);
+                }
+            }
+
+            if (c < reportModel.getColumnCount() - 1) {
+                xPos += columnWidths[c];
+            }
+        }
 
         return 0;
 
