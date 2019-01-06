@@ -80,7 +80,7 @@ public class jGnash {
     }
 
     private static String getOS() {
-        String os = System.getProperty("os.name");
+        final String os = System.getProperty("os.name");
 
         if (os.startsWith("Linux")) {
             return "linux";
@@ -98,7 +98,7 @@ public class jGnash {
     }
 
     private static void downloadFile(final URL source, final Path dest) throws IOException {
-        Logger logger = Logger.getLogger(jGnash.class.getName());
+        final Logger logger = Logger.getLogger(jGnash.class.getName());
 
         logger.info("Downloading " + source.toExternalForm());
 
@@ -126,8 +126,8 @@ public class jGnash {
             fileOutputStream.getChannel().transferFrom(readableByteChannel, 0, Long.MAX_VALUE);
         }
 
-        try (BufferedReader reader = Files.newBufferedReader(md5Dest)){
-            String hash = reader.readLine();
+        try (final BufferedReader reader = Files.newBufferedReader(md5Dest)){
+            final String hash = reader.readLine();
 
             if (hash.compareTo(md5) != 0) {
                 Files.delete(dest);

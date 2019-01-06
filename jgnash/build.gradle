@@ -17,7 +17,7 @@ launch4j {
     mainClassName = 'jGnash'
     outfile = 'jGnash.exe'
     dontWrapJar = true
-    icon = '../../gnome-money.ico'
+    icon = '../../../jgnash-fx/gnome-money.ico'
 }
 
 task createStartScripts(type: CreateStartScripts) {
