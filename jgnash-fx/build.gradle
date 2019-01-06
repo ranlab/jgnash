@@ -66,6 +66,9 @@ distributions {
             from { '../README.html' }
             from { '../README.adoc' }
             from { '../jGnashFx' }
+            exclude('**/*-linux*')  // excludes linux specific JavaFx modules from cross platform zip
+            exclude('**/*-win*')    // excludes windows specific JavaFx modules from cross platform zip
+            exclude('**/*-mac*')    // excludes mac specific JavaFx modules from cross platform zip
         }
     }
 }
