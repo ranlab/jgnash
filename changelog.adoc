@@ -26,6 +26,7 @@
 
 == TODO
 * ChoiceDialog (JavaFx) is not localized for some locales.  Replace with an equivalent or submit upstream patch
+* Write and replace for bxds and xml files to protect against corruption if a crash occurs during a save.
 
 == Release 2.36.2
 * 12/24/2018 Updated Polish translation (Swing, Fx) _[Sławomir Szarkowicz]_
