@@ -1,0 +1,28 @@
+plugins {
+    id 'edu.sc.seis.launch4j' version '2.4.4'
+}
+
+apply plugin: 'distribution'
+apply plugin: 'application' // creates a task to run the full application
+
+description = 'jGnashFx Boot Loader'
+mainClassName = "jGnash"
+
+dependencies {
+    compile project(':jgnash-fx')
+}
+
+launch4j {
+    copyright = 'Copyright (C) 2001-2018 Craig Cavanaugh'
+    mainClassName = 'jGnash'
+    outfile = 'jGnash.exe'
+    dontWrapJar = true
+    icon = '../../gnome-money.ico'
+}
+
+task createStartScripts(type: CreateStartScripts) {
+    outputDir = file('../../')
+}
+
+// call launch4j prior to creating the zip file
+distZip.dependsOn(createExe)
