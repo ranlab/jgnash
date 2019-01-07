@@ -8,9 +8,7 @@ allprojects {
     if (!it.name.startsWith('jgnash-help')) {
         apply plugin: 'java'
     }
-
-    apply plugin: 'findbugs'
-
+    
     sourceCompatibility = 1.8
     targetCompatibility = 1.8
 
@@ -51,18 +49,6 @@ allprojects {
         swingxVersion = '1.6.5-1'
 
         awaitilityVersion = '3.1.2'
-    }
-
-    tasks.withType(FindBugs) {
-        reports {
-            xml.enabled = false
-            html.enabled = true
-        }
-    }
-
-    findbugs {
-        ignoreFailures = true
-        excludeFilter = file("$rootProject.projectDir/findbugs-exclude-filter.xml")
     }
 }
 
