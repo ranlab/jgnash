@@ -18,6 +18,7 @@
 package jgnash.report.table;
 
 import jgnash.engine.CurrencyNode;
+import jgnash.resource.util.ResourceUtils;
 import jgnash.text.CommodityFormat;
 import jgnash.time.DateUtils;
 import jgnash.util.LogUtil;
@@ -35,6 +36,8 @@ import java.util.HashMap;
 /**
  * Report model interface
  *
+ * TODO, convert to extend a report specific interface
+ *
  * @author Craig Cavanaugh
  */
 public abstract class AbstractReportTableModel extends AbstractTableModel {
@@ -44,6 +47,24 @@ public abstract class AbstractReportTableModel extends AbstractTableModel {
     public abstract ColumnStyle getColumnStyle(int columnIndex);
 
     public abstract ColumnHeaderStyle getColumnHeaderStyle(int columnIndex);
+
+    /**
+     * Returns the legend for the grand total
+     *
+     * @return report name
+     */
+    public String getGrandTotalLegend() {
+        return ResourceUtils.getString("Word.Total");
+    }
+
+    /**
+     * Returns the general label for the group footer
+     *
+     * @return footer label
+     */
+    public String getGroupFooterLabel() {
+        return ResourceUtils.getString("Word.Subtotal");
+    }
 
     /** Return true if the column should be fixed width
      *

@@ -176,10 +176,8 @@ class PDFBoxTableTest {
             assertEquals(padding, report.getCellPadding());
             assertTrue(Files.exists(tempPath));
 
-
             // Create a PNG file
-            final PDFRenderer pdfRenderer = new PDFRenderer(doc);
-            final BufferedImage bim = pdfRenderer.renderImageWithDPI(0, 300, ImageType.RGB);
+            final BufferedImage bim = report.renderImage(0, 300);
             ImageIOUtil.writeImage(bim, tempRasterPath.toString(), 300);
 
             assertTrue(Files.exists(tempRasterPath));

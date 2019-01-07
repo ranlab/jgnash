@@ -31,8 +31,11 @@ import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDFont;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.pdfbox.rendering.ImageType;
+import org.apache.pdfbox.rendering.PDFRenderer;
 
 import java.awt.Color;
+import java.awt.image.BufferedImage;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -449,9 +452,10 @@ public class Report {
         contentStream.setFont(getTableFont(), getBaseFontSize());
         contentStream.setNonStrokingColor(Color.BLACK);
 
-        // draw summation text
-
+        // draw summation values
         float xPos = getMargin() + getCellPadding();
+
+        drawText(contentStream, xPos, docYToPageY(yDoc - getRowTextBaselineOffset()), reportModel.getGroupFooterLabel());
 
         for (int c = 0; c < reportModel.getColumnCount(); c++) {
 
@@ -732,6 +736,18 @@ public class Report {
         }
 
         return widths;
+    }
+
+    /**
+     * Renders the PDF report to a raster image
+     * @param pageIndex page index
+     * @param dpi DPI for the image
+     * @return the image
+     * @throws IOException
+     */
+    public BufferedImage renderImage(final int pageIndex, final int dpi) throws IOException {
+        final PDFRenderer pdfRenderer = new PDFRenderer(pdfDocument);
+        return pdfRenderer.renderImageWithDPI(pageIndex, dpi, ImageType.RGB);
     }
 
     /**
