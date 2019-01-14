@@ -15,24 +15,27 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package jgnash.report.ui.jasper;
+package jgnash.report.ui;
+
+import jgnash.report.ui.jasper.BaseDynamicJasperReport;
+
+import javax.print.PrintService;
+import javax.print.attribute.standard.MediaSize;
 
 import java.awt.print.PageFormat;
 import java.awt.print.Paper;
 import java.awt.print.PrinterJob;
+
 import java.util.Arrays;
 import java.util.Locale;
 import java.util.prefs.Preferences;
-
-import javax.print.PrintService;
-import javax.print.attribute.standard.MediaSize;
 
 /**
  * Factory class for handling printing preferences
  * 
  * @author Craig Cavanaugh
  */
-class ReportPrintFactory {
+public class ReportPrintFactory {
     private static final String HEIGHT = "height";
     private static final String WIDTH = "width";
     private static final String ORIENTATION = "orientation";
@@ -51,7 +54,7 @@ class ReportPrintFactory {
      * 
      * @return page format
      */
-    private static PageFormat getDefaultPage() {
+    public static PageFormat getDefaultPage() {
 
         /* A4 is the assumed default */
         MediaSize defaultMediaSize = MediaSize.ISO.A4;
@@ -96,7 +99,7 @@ class ReportPrintFactory {
      * @param report report
      * @param format {@code PageFormat} to save
      */
-    static void savePageFormat(final BaseDynamicJasperReport report, final PageFormat format) {
+    public static void savePageFormat(final BaseDynamicJasperReport report, final PageFormat format) {
         Preferences p = report.getPreferences();
 
         p.putInt(ORIENTATION, format.getOrientation());
@@ -112,7 +115,7 @@ class ReportPrintFactory {
         p.putDouble(IMAGEABLE_Y, paper.getImageableY());
     }
 
-    static PageFormat getPageFormat(final BaseDynamicJasperReport report) {
+    public static PageFormat getPageFormat(final BaseDynamicJasperReport report) {
         Preferences p = report.getPreferences();
 
         double height = p.getDouble(HEIGHT, 0);

@@ -23,22 +23,20 @@ import jgnash.report.pdf.Report;
 import jgnash.report.table.AbstractReportTableModel;
 import jgnash.report.table.ColumnHeaderStyle;
 import jgnash.report.table.ColumnStyle;
+import jgnash.report.ui.ReportPrintFactory;
 import jgnash.resource.util.ResourceUtils;
 import jgnash.util.NotNull;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
-import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDFont;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
-import org.apache.pdfbox.rendering.ImageType;
-import org.apache.pdfbox.rendering.PDFRenderer;
 import org.apache.pdfbox.tools.imageio.ImageIOUtil;
-
 
 import org.junit.jupiter.api.Test;
 
 import java.awt.image.BufferedImage;
+import java.awt.print.PageFormat;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -91,20 +89,21 @@ class PDFBoxTableTest {
         Path tempPath = null;
         Path tempRasterPath = null;
 
-        try (final PDDocument doc = new PDDocument()) {
+        try (final Report report = new Report()) {
             tempPath = Files.createTempFile("pdfTest", ".pdf");
             tempRasterPath = Files.createTempFile("pdfTest", ".png");
 
             final float padding = 2.5f;
-            boolean landscape = true;
 
-            final Report report = new Report(doc);
             report.setTableFont(PDType1Font.COURIER);
             report.setHeaderFont(PDType1Font.HELVETICA_BOLD);
             report.setCellPadding(padding);
             report.setBaseFontSize(9);
-            report.setPageSize(PDRectangle.LETTER, landscape);
-            report.setMargin(32);
+
+            final PageFormat pageFormat = ReportPrintFactory.getDefaultPage();
+            pageFormat.setOrientation(PageFormat.LANDSCAPE);
+            report.setPageFormat(pageFormat);
+
             report.setFooterFont(PDType1Font.TIMES_ITALIC);
             report.setEllipsis("…");
 
@@ -114,16 +113,15 @@ class PDFBoxTableTest {
             report.addTable(new BasicTestReport(), "Test Report", DateTimeFormatter.ISO_DATE.format(LocalDate.now()));
             report.addFooter();
 
-            doc.save(tempPath.toFile());
+            report.saveToFile(tempPath);
 
-            assertEquals(landscape, report.isLandscape());
+            assertTrue(report.isLandscape());
             assertEquals(padding, report.getCellPadding());
             assertTrue(Files.exists(tempPath));
 
 
             // Create a PNG file
-            final PDFRenderer pdfRenderer = new PDFRenderer(doc);
-            final BufferedImage bim = pdfRenderer.renderImageWithDPI(0, 300, ImageType.RGB);
+            final BufferedImage bim = report.renderImage(0, 300);
             ImageIOUtil.writeImage(bim, tempRasterPath.toString(), 300);
 
             assertTrue(Files.exists(tempRasterPath));
@@ -147,20 +145,21 @@ class PDFBoxTableTest {
         Path tempPath = null;
         Path tempRasterPath = null;
 
-        try (final PDDocument doc = new PDDocument()) {
+        try(final Report report = new Report()) {
             tempPath = Files.createTempFile("pdfTest", ".pdf");
             tempRasterPath = Files.createTempFile("pdfTest", ".png");
 
             final float padding = 2.5f;
-            boolean landscape = true;
 
-            final Report report = new Report(doc);
             report.setTableFont(PDType1Font.COURIER);
             report.setHeaderFont(PDType1Font.HELVETICA_BOLD);
             report.setCellPadding(padding);
             report.setBaseFontSize(9);
-            report.setPageSize(PDRectangle.LETTER, landscape);
-            report.setMargin(32);
+
+            final PageFormat pageFormat = (PageFormat) report.getPageFormat().clone();
+            pageFormat.setOrientation(PageFormat.LANDSCAPE);
+            report.setPageFormat(pageFormat);
+
             report.setFooterFont(PDType1Font.TIMES_ITALIC);
             report.setEllipsis("…");
 
@@ -170,9 +169,9 @@ class PDFBoxTableTest {
             report.addTable(new CrossTabTestReport(), "Test Report", DateTimeFormatter.ISO_DATE.format(LocalDate.now()));
             report.addFooter();
 
-            doc.save(tempPath.toFile());
+            report.saveToFile(tempPath);
 
-            assertEquals(landscape, report.isLandscape());
+            assertTrue(report.isLandscape());
             assertEquals(padding, report.getCellPadding());
             assertTrue(Files.exists(tempPath));
 
@@ -186,7 +185,7 @@ class PDFBoxTableTest {
             e.printStackTrace();
         } finally {
             if (tempPath != null) {
-                //Files.deleteIfExists(tempPath);
+                Files.deleteIfExists(tempPath);
             }
 
             if (tempRasterPath != null) {
@@ -224,7 +223,6 @@ class PDFBoxTableTest {
         BasicTestReport() {
             currencyNode = DefaultCurrencies.getDefault();
         }
-
 
         @Override
         public CurrencyNode getCurrency() {

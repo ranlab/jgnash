@@ -19,11 +19,13 @@ package jgnash.report.pdf;
 
 import jgnash.report.table.AbstractReportTableModel;
 import jgnash.report.table.ColumnStyle;
+import jgnash.report.ui.ReportPrintFactory;
 import jgnash.resource.util.ResourceUtils;
 import jgnash.text.CommodityFormat;
 import jgnash.time.DateUtils;
 import jgnash.util.NotNull;
 import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.pdfbox.io.MemoryUsageSetting;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
@@ -36,9 +38,11 @@ import org.apache.pdfbox.rendering.PDFRenderer;
 
 import java.awt.Color;
 import java.awt.image.BufferedImage;
+import java.awt.print.PageFormat;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.nio.file.Path;
 import java.text.MessageFormat;
 import java.text.NumberFormat;
 import java.time.LocalDate;
@@ -51,6 +55,7 @@ import java.util.Objects;
 import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.prefs.Preferences;
 
 import static jgnash.util.LogUtil.logSevere;
 
@@ -64,18 +69,18 @@ import static jgnash.util.LogUtil.logSevere;
  *
  * @author Craig Cavanaugh
  * <p>
- * TODO: full margin control, crosstabulation
+ * TODO: crosstabulation
  */
 @SuppressWarnings("WeakerAccess")
-public class Report {
+public class Report implements AutoCloseable {
+
+    private static final int MAX_MEMORY_USAGE = 500_000;    // allow 1/2 meg reports in memory before a scratch file is used
 
     protected static final ResourceBundle rb = ResourceUtils.getBundle();
 
     private static final int DEFAULT_BASE_FONT_SIZE = 11;
 
     private String ellipsis = "...";
-
-    private PDRectangle pageSize;
 
     private float baseFontSize;
 
@@ -84,8 +89,6 @@ public class Report {
     private PDFont headerFont;
 
     private PDFont footerFont;
-
-    private float margin;
 
     private float cellPadding = 2;
 
@@ -101,28 +104,39 @@ public class Report {
 
     final PDDocument pdfDocument;
 
-    public Report(final PDDocument pdfDocument) {
-        this.pdfDocument = pdfDocument;
+    private PageFormat pageFormat;
 
-        setPageSize(PDRectangle.LETTER, false);
+    public Report() {
+        this.pdfDocument = new PDDocument(MemoryUsageSetting.setupMixed(MAX_MEMORY_USAGE));
+
         setTableFont(PDType1Font.HELVETICA);
         setFooterFont(PDType1Font.HELVETICA_OBLIQUE);
 
         setBaseFontSize(DEFAULT_BASE_FONT_SIZE);
     }
 
-    @NotNull
-    public PDRectangle getPageSize() {
-        return pageSize;
+    public void clearReport() {
+        for (PDPage pdPage : pdfDocument.getPages()) {
+            pdfDocument.removePage(pdPage);
+        }
     }
 
-    public void setPageSize(@NotNull PDRectangle pageSize, boolean landscape) {
+    public int getPageCount() {
+        return pdfDocument.getNumberOfPages();
+    }
 
-        this.pageSize = pageSize;
-
-        if (landscape) {
-            this.pageSize = new PDRectangle(pageSize.getHeight(), pageSize.getWidth());
+    public final PageFormat getPageFormat() {
+        if (pageFormat == null) {
+            pageFormat = ReportPrintFactory.getDefaultPage();
         }
+
+        return pageFormat;
+    }
+
+    public final void setPageFormat(@NotNull final PageFormat pageFormat) {
+        Objects.requireNonNull(pageFormat);
+
+        this.pageFormat = pageFormat;
     }
 
     @NotNull
@@ -147,7 +161,7 @@ public class Report {
     }
 
     public boolean isLandscape() {
-        return pageSize.getWidth() > pageSize.getHeight();
+        return getPageFormat().getWidth() > getPageFormat().getHeight();
     }
 
     public PDFont getHeaderFont() {
@@ -166,12 +180,24 @@ public class Report {
         this.cellPadding = cellPadding;
     }
 
-    public float getMargin() {
-        return margin;
+    private float getAvailableWidth() {
+        return (float) getPageFormat().getImageableWidth();
     }
 
-    public void setMargin(float margin) {
-        this.margin = margin;
+    private float getLeftMargin() {
+        return (float) getPageFormat().getImageableX();
+    }
+
+    private float getTopMargin() {
+        return (float) getPageFormat().getImageableY();
+    }
+
+    private float getRightMargin() {
+        return (float) getPageFormat().getWidth() - getAvailableWidth() - getLeftMargin();
+    }
+
+    private float getBottomMargin() {
+        return (float) (getPageFormat().getHeight() - getPageFormat().getImageableHeight() - getTopMargin());
     }
 
     private float getFooterFontSize() {
@@ -202,7 +228,7 @@ public class Report {
 
                 final PDPage page = createPage();
 
-                docY = getMargin();   // start at top of the page with the margin
+                docY = getTopMargin();   // start at top of the page with the margin
 
                 try (final PDPageContentStream contentStream = new PDPageContentStream(pdfDocument, page)) {
 
@@ -245,11 +271,12 @@ public class Report {
 
     /**
      * Simply transform function to convert from a upper origin to a lower pdf page origin.
+     *
      * @param y document y position
      * @return returns the pdf page y position
      */
     private float docYToPageY(final float y) {
-        return getPageSize().getHeight() - y;
+        return (float) getPageFormat().getHeight() - y;
     }
 
     public static Set<GroupInfo> getGroups(final AbstractReportTableModel tableModel) {
@@ -292,14 +319,14 @@ public class Report {
     /**
      * Writes a table section to the report.
      *
-     * @param reportModel report model
-     * @param group report group
+     * @param reportModel   report model
+     * @param group         report group
      * @param contentStream PDF content stream
-     * @param startRow starting row
-     * @param columnWidths column widths
-     * @param yStart start location from top of the page
+     * @param startRow      starting row
+     * @param columnWidths  column widths
+     * @param yStart        start location from top of the page
      * @return returns the last reported row of the group and yDoc location
-     * @throws IOException  IO exception
+     * @throws IOException IO exception
      */
     @SuppressWarnings("SuspiciousNameCombination")
     private Pair<Integer, Float> addTableSection(final AbstractReportTableModel reportModel, @NotNull final String group,
@@ -311,16 +338,16 @@ public class Report {
         int rowsWritten = 0;    // the return value of the number of rows written
 
         // establish start location, use half the row height as the vertical margin between title and table
-        final float yTop = getPageSize().getHeight() - getTableRowHeight() / 2 - yStart;
+        final float yTop = (float) getPageFormat().getHeight() - getTableRowHeight() / 2 - yStart;
 
-        float xPos = getMargin() + getCellPadding();
+        float xPos = getLeftMargin() + getCellPadding();
         float yPos = yTop - getTableRowHeight() + getRowTextBaselineOffset();
 
         contentStream.setFont(getHeaderFont(), getBaseFontSize());
 
         // add the header
         contentStream.setNonStrokingColor(headerBackground);
-        fillRect(contentStream, getMargin(), yTop - getTableRowHeight(), getAvailableWidth(), getTableRowHeight());
+        fillRect(contentStream, getLeftMargin(), yTop - getTableRowHeight(), getAvailableWidth(), getTableRowHeight());
 
         contentStream.setNonStrokingColor(headerTextColor);
 
@@ -340,13 +367,15 @@ public class Report {
 
         int row = startRow;
 
-        while (yPos > getMargin() + getTableRowHeight() && row < reportModel.getRowCount()) {
+        final float bottomMargin = getBottomMargin();
+
+        while (yPos > bottomMargin + getTableRowHeight() && row < reportModel.getRowCount()) {
 
             final String rowGroup = reportModel.getGroup(row);
 
             if (group.equals(rowGroup)) {
 
-                xPos = getMargin() + getCellPadding();
+                xPos = getLeftMargin() + getCellPadding();
                 yPos -= getTableRowHeight();
 
                 col = 0;
@@ -383,16 +412,16 @@ public class Report {
 
         // add row lines
         yPos = yTop;
-        xPos = getMargin();
+        xPos = getLeftMargin();
 
         for (int r = 0; r <= rowsWritten + 1; r++) {
-            drawLine(contentStream, xPos, yPos, getAvailableWidth() + getMargin(), yPos);
+            drawLine(contentStream, xPos, yPos, getAvailableWidth() + getLeftMargin(), yPos);
             yPos -= getTableRowHeight();
         }
 
         // add column lines
         yPos = yTop;
-        xPos = getMargin();
+        xPos = getLeftMargin();
 
         col = 0;
         for (int i = 0; i < reportModel.getColumnCount(); i++) {
@@ -407,7 +436,7 @@ public class Report {
         // end of last column
         drawLine(contentStream, xPos, yPos, xPos, yPos - getTableRowHeight() * (rowsWritten + 1));
 
-        float yDoc = getPageSize().getHeight() - (yPos - getTableRowHeight() * (rowsWritten + 1));
+        float yDoc = (float) getPageFormat().getHeight() - (yPos - getTableRowHeight() * (rowsWritten + 1));
 
         // return the row and docY position
         return new ImmutablePair<>(row, yDoc);
@@ -415,6 +444,7 @@ public class Report {
 
     /**
      * Calculates the offset for row text
+     *
      * @return offset
      */
     private float getRowTextBaselineOffset() {
@@ -425,35 +455,34 @@ public class Report {
     /**
      * Writes a table footer to the report.
      *
-     * @param reportModel report model
-     * @param groupInfo Group info to report on*
+     * @param reportModel   report model
+     * @param groupInfo     Group info to report on*
      * @param contentStream PDF content stream
-     * @param columnWidths column widths
-     * @param yStart start location from top of the page
+     * @param columnWidths  column widths
+     * @param yStart        start location from top of the page
      * @return returns the y position from the top of the page
-     * @throws IOException  IO exception
+     * @throws IOException IO exception
      */
     private float addTableFooter(final AbstractReportTableModel reportModel, final GroupInfo groupInfo,
-                                final PDPageContentStream contentStream, float[] columnWidths,
-                                float yStart) throws IOException {
+                                 final PDPageContentStream contentStream, float[] columnWidths,
+                                 float yStart) throws IOException {
 
         float yDoc = yStart + getTableRowHeight();
 
         // add the footer background
         contentStream.setNonStrokingColor(footerBackGround);
-        fillRect(contentStream, getMargin(), docYToPageY(yDoc), getAvailableWidth(), getTableRowHeight());
+        fillRect(contentStream, getLeftMargin(), docYToPageY(yDoc), getAvailableWidth(), getTableRowHeight());
 
-        drawLine(contentStream, getMargin(), docYToPageY(yDoc), getAvailableWidth() + getMargin(), docYToPageY(yDoc));
-        drawLine(contentStream, getMargin(), docYToPageY(yDoc - getTableRowHeight()), getMargin(), docYToPageY(yDoc));
-        drawLine(contentStream, getMargin() + getAvailableWidth(), docYToPageY(yDoc - getTableRowHeight()),
-                getMargin() + getAvailableWidth(), docYToPageY(yDoc));
-
+        drawLine(contentStream, getLeftMargin(), docYToPageY(yDoc), getAvailableWidth() + getLeftMargin(), docYToPageY(yDoc));
+        drawLine(contentStream, getLeftMargin(), docYToPageY(yDoc - getTableRowHeight()), getLeftMargin(), docYToPageY(yDoc));
+        drawLine(contentStream, getLeftMargin() + getAvailableWidth(), docYToPageY(yDoc - getTableRowHeight()),
+                getLeftMargin() + getAvailableWidth(), docYToPageY(yDoc));
 
         contentStream.setFont(getTableFont(), getBaseFontSize());
         contentStream.setNonStrokingColor(Color.BLACK);
 
         // draw summation values
-        float xPos = getMargin() + getCellPadding();
+        float xPos = getLeftMargin() + getCellPadding();
 
         drawText(contentStream, xPos, docYToPageY(yDoc - getRowTextBaselineOffset()), reportModel.getGroupFooterLabel());
 
@@ -484,7 +513,6 @@ public class Report {
         }
 
         return 0;
-
     }
 
     private String formatValue(final Object value, final int column, final AbstractReportTableModel reportModel) {
@@ -553,15 +581,11 @@ public class Report {
         contentStream.fill();
     }
 
-    private float getAvailableWidth() {
-        return getPageSize().getWidth() - getMargin() * 2;
-    }
-
     /**
      * Adds a title to the table and returns the new document position
      *
-     * @param title title
-     * @param yStart  table title position from the top of the page
+     * @param title  title
+     * @param yStart table title position from the top of the page
      * @return current y document position
      * @throws IOException exception
      */
@@ -569,7 +593,7 @@ public class Report {
             throws IOException {
 
         float docY = yStart + getBaseFontSize() * 1.5f;  // add for font height
-        float xPos = getMargin();
+        float xPos = getLeftMargin();
 
         contentStream.setFont(getHeaderFont(), getBaseFontSize() * 1.5f);
         drawText(contentStream, xPos, docYToPageY(docY), title);
@@ -580,23 +604,23 @@ public class Report {
     /**
      * Adds a Title and subtitle to the document and returns the height consumed
      *
-     * @param title   title
+     * @param title  title
      * @param yStart start from the top of the page
      * @return document y position
      * @throws IOException exception
      */
     private float addReportTitle(final PDPageContentStream contentStream, final String title, final String subTitle,
-                                final float yStart) throws IOException {
+                                 final float yStart) throws IOException {
 
         float width = getStringWidth(title, getHeaderFont(), getBaseFontSize() * 2);
-        float xPos = (getAvailableWidth() / 2f) - (width / 2f) + getMargin();
+        float xPos = (getAvailableWidth() / 2f) - (width / 2f) + getLeftMargin();
         float docY = yStart + getBaseFontSize();
 
         contentStream.setFont(getHeaderFont(), getBaseFontSize() * 2);
         drawText(contentStream, xPos, docYToPageY(docY), title);
 
         width = getStringWidth(subTitle, getFooterFont(), getFooterFontSize());
-        xPos = (getAvailableWidth() / 2f) - (width / 2f) + getMargin();
+        xPos = (getAvailableWidth() / 2f) - (width / 2f) + getLeftMargin();
         docY += getFooterFontSize() * 1.5f;
 
         contentStream.setFont(getFooterFont(), getFooterFontSize());
@@ -612,7 +636,7 @@ public class Report {
         final String timeStamp = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT).format(LocalDateTime.now());
 
         final int pageCount = pdfDocument.getNumberOfPages();
-        float yStart = getMargin() * 2 / 3;
+        float yStart = getBottomMargin() * 2 / 3;
 
         for (int i = 0; i < pageCount; i++) {
             final PDPage page = pdfDocument.getPage(i);
@@ -622,8 +646,8 @@ public class Report {
             try (final PDPageContentStream contentStream = new PDPageContentStream(pdfDocument, page, PDPageContentStream.AppendMode.APPEND, true)) {
                 contentStream.setFont(getFooterFont(), getFooterFontSize());
 
-                drawText(contentStream, getMargin(), yStart, timeStamp);
-                drawText(contentStream, getPageSize().getWidth() - getMargin() - width, yStart, pageText);
+                drawText(contentStream, getLeftMargin(), yStart, timeStamp);
+                drawText(contentStream, (float) getPageFormat().getWidth() - getRightMargin() - width, yStart, pageText);
             } catch (final IOException e) {
                 logSevere(Report.class, e);
             }
@@ -652,8 +676,11 @@ public class Report {
     }
 
     private PDPage createPage() {
-        PDPage page = new PDPage();
-        page.setMediaBox(getPageSize());
+
+        final PDPage page = new PDPage();
+
+        page.setMediaBox(new PDRectangle(0f, 0f, (float) getPageFormat().getWidth(),
+                (float) getPageFormat().getHeight()));
 
         pdfDocument.addPage(page);  // add the page to the document
 
@@ -738,16 +765,36 @@ public class Report {
         return widths;
     }
 
+    public final Preferences getPreferences() {
+        return Preferences.userNodeForPackage(getClass()).node(getClass().getSimpleName());
+    }
+
     /**
      * Renders the PDF report to a raster image
+     *
      * @param pageIndex page index
-     * @param dpi DPI for the image
+     * @param dpi       DPI for the image
      * @return the image
-     * @throws IOException
+     * @throws IOException IO exception
      */
     public BufferedImage renderImage(final int pageIndex, final int dpi) throws IOException {
         final PDFRenderer pdfRenderer = new PDFRenderer(pdfDocument);
         return pdfRenderer.renderImageWithDPI(pageIndex, dpi, ImageType.RGB);
+    }
+
+    /**
+     * Saves the report to a PDF file
+     *
+     * @param path Path to save to
+     * @throws IOException exception
+     */
+    public void saveToFile(final Path path) throws IOException {
+        pdfDocument.save(path.toFile());
+    }
+
+    @Override
+    public void close() throws IOException {
+        pdfDocument.close();
     }
 
     /**

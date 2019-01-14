@@ -33,6 +33,7 @@ import jgnash.report.BalanceByMonthCSVReport;
 import jgnash.report.ProfitLossTextReport;
 import jgnash.uifx.control.DateRangeDialogController;
 import jgnash.uifx.report.jasper.JasperViewerDialogController;
+import jgnash.uifx.report.pdf.ReportViewerDialogController;
 import jgnash.uifx.util.FXMLUtils;
 import jgnash.uifx.util.StageUtils;
 import jgnash.uifx.views.AccountBalanceDisplayManager;
@@ -72,6 +73,24 @@ public class ReportActions {
 
         // Preserve size and location
         StageUtils.addBoundsListener(reportPair.getStage(), AccountRegisterReportController.class, MainView.getPrimaryStage());
+
+        reportPair.getStage().show();
+    }
+
+    public static void displayAccountRegisterReport2(@Nullable final Account account) {
+        final FXMLUtils.Pair<ReportViewerDialogController> reportPair =
+                FXMLUtils.load(ReportViewerDialogController.class.getResource("ReportViewerDialog.fxml"),
+                        ResourceUtils.getString("Title.AccountRegister"));
+
+        final AccountRegisterReportController2 controller
+                = reportPair.getController().loadReportController("AccountRegisterReport2.fxml");
+
+        if (controller != null) {
+            controller.setAccount(account);
+        }
+
+        // Preserve size and location
+        StageUtils.addBoundsListener(reportPair.getStage(), AccountRegisterReportController2.class, MainView.getPrimaryStage());
 
         reportPair.getStage().show();
     }

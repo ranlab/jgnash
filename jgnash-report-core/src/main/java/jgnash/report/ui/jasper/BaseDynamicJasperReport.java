@@ -59,6 +59,7 @@ import jgnash.report.table.AbstractReportTableModel;
 import jgnash.report.table.ColumnHeaderStyle;
 import jgnash.report.table.ColumnStyle;
 import jgnash.report.table.Formats;
+import jgnash.report.ui.ReportPrintFactory;
 import jgnash.text.CommodityFormat;
 import jgnash.time.DateUtils;
 import jgnash.resource.util.ResourceUtils;
