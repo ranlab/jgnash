@@ -88,6 +88,8 @@ public class ReportViewerDialogController {
 
     private static final int REPORT_RESOLUTION = 72;
 
+    private static final int UPSCALING = 2;
+
     private static final float MIN_ZOOM = 0.5f;
 
     private static final float MAX_ZOOM = 10f;
@@ -100,13 +102,9 @@ public class ReportViewerDialogController {
 
     private static final int UPDATE_PERIOD = 1500; // update period in milliseconds
 
-    private final DoubleProperty zoomProperty = new SimpleDoubleProperty();
+    private final DoubleProperty zoomProperty = new SimpleDoubleProperty(1.0);
 
     private final DecimalFormat zoomDecimalFormat = new DecimalFormat("#.#");
-
-    private double screenResolution = REPORT_RESOLUTION;
-
-    private double zoom = 0;
 
     @FXML
     private StackPane reportControllerPane;
@@ -194,8 +192,6 @@ public class ReportViewerDialogController {
     private void initialize() {
         busyPane = new BusyPane();
         stackPane.getChildren().add(busyPane);
-
-        screenResolution = Screen.getPrimary().getDpi();
 
         saveButton.disableProperty().bind(report.isNull());
         printButton.disableProperty().bind(report.isNull());
@@ -378,19 +374,15 @@ public class ReportViewerDialogController {
 
             if (zoomProperty.doubleValue() != newZoom) {
                 zoomProperty.setValue(newZoom);
-                zoom = (float) (zoomProperty.doubleValue() * screenResolution / REPORT_RESOLUTION);
-                refresh();
             }
         }
     }
 
     private void setActualZoomRatio(final double newZoom) {
-        if (newZoom > 0 && zoom != newZoom) {
-            zoomProperty.set(newZoom * REPORT_RESOLUTION / screenResolution);
-            zoom = newZoom;
+        if (newZoom > 0) {
+            zoomProperty.set(newZoom);
 
             zoomComboBox.getEditor().setText(zoomDecimalFormat.format(zoomProperty.doubleValue() * 100) + "%");
-            refresh();
         }
     }
 
@@ -405,11 +397,16 @@ public class ReportViewerDialogController {
             for (int i = 0; i < pageCount.get(); i++) {
                 try {
 
-                    // TODO, calculate the dpi based on zoom and native screen resolution
-                    final BufferedImage bufferedImage = report.get().renderImage(i, 96);
+                    // report resolution is fixed and the ImageView width and height are adjusted to the zoom value
+                    final BufferedImage bufferedImage = report.get().renderImage(i, REPORT_RESOLUTION * UPSCALING);
 
                     final ImageView imageView = new ImageView(SwingFXUtils.toFXImage(bufferedImage, null));
+
                     imageView.setEffect(dropShadow);
+
+                    // bind the width and height to the zoom level
+                    imageView.fitWidthProperty().bind(zoomProperty.multiply(bufferedImage.getWidth() / UPSCALING));
+                    imageView.fitHeightProperty().bind(zoomProperty.multiply(bufferedImage.getHeight() / UPSCALING));
 
                     children.add(imageView);
                 } catch (IOException ex) {
@@ -474,7 +471,7 @@ public class ReportViewerDialogController {
                 try {
                     parent.get().setCursor(Cursor.WAIT);
 
-                    //JasperPrintManager.printReport(jasperPrint.get(), true);
+                    // TODO: Fixme
 
                     StaticUIMethods.displayError("Fix me");
                 } catch (final Exception e) {
@@ -499,11 +496,6 @@ public class ReportViewerDialogController {
 
         if (format != oldFormat) {
             report.get().setPageFormat(format);
-
-            // ================================
-            // TODO: regenerate the report
-            // createJasperPrint(report.get());
-            // ================================
 
             Platform.runLater(this::refresh);
         }
@@ -615,5 +607,4 @@ public class ReportViewerDialogController {
     private void handleActualSizeAction() {
         zoomComboBox.getSelectionModel().select(DEFAULT_ZOOM_INDEX); // 100% size
     }
-
 }
