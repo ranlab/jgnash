@@ -1,6 +1,6 @@
 /*
  * jGnash, a personal finance application
- * Copyright (C) 2001-2018 Craig Cavanaugh
+ * Copyright (C) 2001-2019 Craig Cavanaugh
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -33,6 +33,7 @@ import jgnash.engine.ReconciledState;
 import jgnash.engine.Transaction;
 import jgnash.engine.TransactionEntry;
 import jgnash.engine.TransactionType;
+import jgnash.report.AccountRegisterReport;
 import jgnash.report.pdf.Report;
 import jgnash.report.table.AbstractReportTableModel;
 import jgnash.report.table.ColumnHeaderStyle;
@@ -42,6 +43,7 @@ import jgnash.resource.util.ResourceUtils;
 import jgnash.time.DateUtils;
 import jgnash.uifx.control.AccountComboBox;
 import jgnash.uifx.control.DatePickerEx;
+import jgnash.uifx.report.pdf.ReportController;
 import jgnash.uifx.views.register.RegisterFactory;
 import jgnash.util.Nullable;
 
@@ -55,6 +57,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.ResourceBundle;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.prefs.Preferences;
 import java.util.stream.Collectors;
@@ -64,7 +67,9 @@ import java.util.stream.Collectors;
  *
  * @author Craig Cavanaugh
  */
-public class AccountRegisterReportController2 extends Report {
+public class AccountRegisterReportController2 implements ReportController {
+
+    private static final ResourceBundle rb = ResourceUtils.getBundle();
 
     @FXML
     private TextField memoFilterTextField;
@@ -95,13 +100,21 @@ public class AccountRegisterReportController2 extends Report {
 
     private static final String SPLIT = ResourceUtils.getString("Button.Splits");
 
+    private Report report = new AccountRegisterReport();
+
+    private Runnable refreshRunnable = null;
+
     public AccountRegisterReportController2() {
         super();
 
-        setTableFont(PDType1Font.COURIER);
-        setHeaderFont(PDType1Font.HELVETICA_BOLD);
-        setCellPadding(2.5f);
-        setBaseFontSize(9);
+        report.setTableFont(PDType1Font.COURIER);
+        report.setHeaderFont(PDType1Font.HELVETICA_BOLD);
+        report.setCellPadding(2.5f);
+        report.setBaseFontSize(9);
+    }
+
+    private Preferences getPreferences() {
+        return Preferences.userNodeForPackage(getClass()).node(getClass().getSimpleName());
     }
 
     @FXML
@@ -112,11 +125,13 @@ public class AccountRegisterReportController2 extends Report {
         showTimestampCheckBox.setSelected(preferences.getBoolean(SHOW_TIMESTAMP, false));
 
         accountComboBox.valueProperty().addListener((observable, oldValue, newValue) -> {
-            refreshAccount(newValue);
-            handleRefresh();
+            if (newValue != null) {
+                refreshAccount(newValue);
+                handleReportRefresh();
+            }
         });
 
-        final ChangeListener<Object> refreshListener = (observable, oldValue, newValue) -> handleRefresh();
+        final ChangeListener<Object> refreshListener = (observable, oldValue, newValue) -> handleReportRefresh();
 
         showSplitsCheckBox.selectedProperty().addListener(refreshListener);
         startDatePicker.valueProperty().addListener(refreshListener);
@@ -124,6 +139,16 @@ public class AccountRegisterReportController2 extends Report {
         payeeFilterTextField.textProperty().addListener(refreshListener);
         memoFilterTextField.textProperty().addListener(refreshListener);
         showTimestampCheckBox.selectedProperty().addListener(refreshListener);
+    }
+
+    @Override
+    public void setRefreshRunnable(final Runnable runnable) {
+        refreshRunnable = runnable;
+    }
+
+    @Override
+    public void getReport(final Consumer<Report> reportConsumer) {
+        reportConsumer.accept(report);
     }
 
     public void setAccount(@Nullable final Account account) {
@@ -143,32 +168,33 @@ public class AccountRegisterReportController2 extends Report {
         }
     }
 
-    private void handleRefresh() {
+    private void handleReportRefresh() {
+
         final Preferences preferences = getPreferences();
 
         preferences.putBoolean(SHOW_SPLITS, showSplitsCheckBox.isSelected());
         preferences.putBoolean(SHOW_TIMESTAMP, showTimestampCheckBox.isSelected());
 
-        /*if (refreshCallBackProperty().get() != null) {
-            refreshCallBackProperty().get().run();
-        }*/
+        addTable();
 
-        // TODO: Fix refresh
+        // send notification the report has been updated
+        if (refreshRunnable != null) {
+            refreshRunnable.run();
+        }
     }
 
     private void addTable() {
         AbstractReportTableModel model = createReportModel();
 
-        clearReport();
+        report.clearReport();
 
         try {
-            addTable(model, "test", "test");
-        } catch (IOException e) {
+            report.addTable(model, accountComboBox.getValue().getName(), "");
+        } catch (final IOException e) {
             e.printStackTrace();
         }
     }
 
-    // TODO, call this to generate table and load it
     private AbstractReportTableModel createReportModel() {
         final Account account = accountComboBox.getValue();
         final LocalDate startDate = startDatePicker.getValue();
@@ -223,6 +249,8 @@ public class AccountRegisterReportController2 extends Report {
                     .and(new PayeePredicate(payeeFilter)));
 
             this.showTimestamp = showTimestamp;
+
+            System.out.println("sumAmounts: " + sumAmounts);
 
             loadAccount();
         }

@@ -1,6 +1,6 @@
 /*
  * jGnash, a personal finance application
- * Copyright (C) 2001-2018 Craig Cavanaugh
+ * Copyright (C) 2001-2019 Craig Cavanaugh
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -83,13 +83,17 @@ class PDFBoxTableTest {
         }
     }
 
+    private class SimpleReport extends Report {
+
+    }
+
     @Test
     void basicReportTest() throws IOException {
 
         Path tempPath = null;
         Path tempRasterPath = null;
 
-        try (final Report report = new Report()) {
+        try (final Report report = new SimpleReport()) {
             tempPath = Files.createTempFile("pdfTest", ".pdf");
             tempRasterPath = Files.createTempFile("pdfTest", ".png");
 
@@ -130,7 +134,7 @@ class PDFBoxTableTest {
             e.printStackTrace();
         } finally {
             if (tempPath != null) {
-                Files.deleteIfExists(tempPath);
+                //Files.deleteIfExists(tempPath);
             }
 
             if (tempRasterPath != null) {
@@ -145,7 +149,7 @@ class PDFBoxTableTest {
         Path tempPath = null;
         Path tempRasterPath = null;
 
-        try(final Report report = new Report()) {
+        try(final Report report = new SimpleReport()) {
             tempPath = Files.createTempFile("pdfTest", ".pdf");
             tempRasterPath = Files.createTempFile("pdfTest", ".png");
 
@@ -185,7 +189,7 @@ class PDFBoxTableTest {
             e.printStackTrace();
         } finally {
             if (tempPath != null) {
-                Files.deleteIfExists(tempPath);
+                //Files.deleteIfExists(tempPath);
             }
 
             if (tempRasterPath != null) {
@@ -211,12 +215,12 @@ class PDFBoxTableTest {
 
         private final ColumnStyle[] columnStyles = {ColumnStyle.SHORT_DATE, ColumnStyle.TIMESTAMP,
                 ColumnStyle.STRING, ColumnStyle.STRING, ColumnStyle.STRING, ColumnStyle.STRING, ColumnStyle.STRING,
-                ColumnStyle.SHORT_AMOUNT, ColumnStyle.SHORT_AMOUNT, ColumnStyle.AMOUNT_SUM, ColumnStyle.GROUP};
+                ColumnStyle.SHORT_AMOUNT, ColumnStyle.SHORT_AMOUNT, ColumnStyle.AMOUNT_SUM};
 
         private String[] columnNames = {rb.getString(COLUMN_DATE), rb.getString(COLUMN_TIMESTAMP),
                 rb.getString(COLUMN_NUM), rb.getString(COLUMN_PAYEE), rb.getString(COLUMN_MEMO),
                 rb.getString(COLUMN_ACCOUNT), rb.getString(COLUMN_CLR), rb.getString(COLUMN_DEPOSIT),
-                rb.getString(COLUMN_WITHDRAWAL), rb.getString(COLUMN_BALANCE), "group"};
+                rb.getString(COLUMN_WITHDRAWAL), rb.getString(COLUMN_BALANCE)};
 
         final CurrencyNode currencyNode;
 
@@ -256,7 +260,6 @@ class PDFBoxTableTest {
                 case 4:
                 case 5:
                 case 6:
-                case 10:
                     return String.class;
                 default:
                     return BigDecimal.class;
@@ -273,7 +276,6 @@ class PDFBoxTableTest {
                 case 7:
                 case 8:
                 case 9:
-                case 10:
                     return true;
                 default:
                     return false;
@@ -320,8 +322,6 @@ class PDFBoxTableTest {
                     return rowIndex % 2 != 0 ? new BigDecimal(100 + rowIndex) : null;
                 case 9:
                     return new BigDecimal(1000 + rowIndex * 10);
-                case 10:
-                    return "income";
                 default:
                     return null;
             }

@@ -96,12 +96,10 @@ public class ReportPrintFactory {
     /**
      * Save a {@code PageFormat} to preferences
      * 
-     * @param report report
+     * @param p the specific report {@code Preferences}
      * @param format {@code PageFormat} to save
      */
-    public static void savePageFormat(final BaseDynamicJasperReport report, final PageFormat format) {
-        Preferences p = report.getPreferences();
-
+    public static void savePageFormat(final Preferences p, final PageFormat format) {
         p.putInt(ORIENTATION, format.getOrientation());
 
         Paper paper = format.getPaper();
@@ -115,9 +113,12 @@ public class ReportPrintFactory {
         p.putDouble(IMAGEABLE_Y, paper.getImageableY());
     }
 
-    public static PageFormat getPageFormat(final BaseDynamicJasperReport report) {
-        Preferences p = report.getPreferences();
-
+    /**
+     * Generates a {@code PageFormat} given a {@code Preferences} node
+     * @param p {@code Preferences} node
+     * @return restored {@code PageFormat} or the default if it has not been saved before
+     */
+    public static PageFormat getPageFormat(final Preferences p) {
         double height = p.getDouble(HEIGHT, 0);
         double width = p.getDouble(WIDTH, 0);
         int orientation = p.getInt(ORIENTATION, 0);

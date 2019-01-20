@@ -1,6 +1,6 @@
 /*
  * jGnash, a personal finance application
- * Copyright (C) 2001-2018 Craig Cavanaugh
+ * Copyright (C) 2001-2019 Craig Cavanaugh
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -55,8 +55,6 @@ import jgnash.resource.util.ResourceUtils;
 import jgnash.uifx.StaticUIMethods;
 import jgnash.uifx.control.BusyPane;
 import jgnash.uifx.report.PortfolioReportController;
-import jgnash.uifx.report.jasper.DynamicJasperReport;
-import jgnash.uifx.report.jasper.JasperViewerDialogController;
 import jgnash.uifx.util.InjectFXML;
 import jgnash.uifx.views.main.MainView;
 import jgnash.util.DefaultDaemonThreadFactory;
@@ -77,7 +75,6 @@ import java.util.Locale;
 import java.util.ResourceBundle;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 import java.util.prefs.Preferences;
 
 /**
@@ -157,7 +154,7 @@ public class ReportViewerDialogController {
     private Button lastButton;
 
     @FXML
-    private Spinner<Integer> fontSizeSpinner;
+    private Spinner<Double> fontSizeSpinner;
 
     @FXML
     private Button reportFormatButton;
@@ -180,7 +177,6 @@ public class ReportViewerDialogController {
     private BusyPane busyPane;
 
     private final SimpleObjectProperty<Report> report = new SimpleObjectProperty<>();
-
 
     private final SimpleObjectProperty<Pane> reportControllerPaneProperty = new SimpleObjectProperty<>();
 
@@ -238,37 +234,13 @@ public class ReportViewerDialogController {
         fitHeightButton.prefHeightProperty().bind(saveButton.heightProperty());
         fitWidthButton.prefHeightProperty().bind(saveButton.heightProperty());
         fitPageButton.prefHeightProperty().bind(saveButton.heightProperty());
+        fontSizeSpinner.setValueFactory(new SpinnerValueFactory.DoubleSpinnerValueFactory(5, 15, 7));
 
-        fontSizeSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(5, 15, 7));
-
-        report.addListener((observable, oldValue, newValue) -> {
-
-            // ================================
-            // TODO: set and generate the report
-            // createJasperPrint(report.get());
-            // ================================
-
-
-            /*if (newValue != null) {
-                jasperPrint.set(newValue.createJasperPrint(false));
-
-                fontSizeSpinner.valueFactoryProperty().get().setValue(newValue.getBaseFontSize());
-
-                newValue.refreshCallBackProperty().set(() ->
-                        createJasperPrint(newValue));
-            } else {
-                jasperPrint.set(null);
-            }*/
-        });
-
+        // act when the report property has been set or changed
         report.addListener((observable, oldValue, newValue) -> {
             if (newValue != null) {
-                pageCount.set(newValue.getPageCount());
-            } else {
-                pageCount.set(0);
+                fontSizeSpinner.valueFactoryProperty().get().setValue((double) newValue.getBaseFontSize());
             }
-
-            Platform.runLater(this::refresh);
         });
 
         reportControllerPaneProperty.addListener((observable, oldValue, newValue) -> {
@@ -278,14 +250,7 @@ public class ReportViewerDialogController {
         });
 
         fontSizeSpinner.valueProperty().addListener((observable, oldValue, newValue) -> {
-            report.get().setBaseFontSize(newValue);
-
-            //Platform.runLater(() -> createJasperPrint(report.get()));
-
-            // ================================
-            // TODO: set and generate the report
-            // createJasperPrint(report.get());
-            // ================================
+            report.get().setBaseFontSize(newValue.floatValue());
         });
 
         pagePane.setSpacing(PAGE_BORDER);
@@ -341,7 +306,7 @@ public class ReportViewerDialogController {
         setZoomRatio(1);
     }
 
-    private void createJasperPrint(final DynamicJasperReport dynamicJasperReport) {
+    /*private void createJasperPrint(final DynamicJasperReport dynamicJasperReport) {
 
         // rate limit creation when print options are occurring quickly
         reportExecutor.schedule(() -> {
@@ -364,20 +329,30 @@ public class ReportViewerDialogController {
 
             }
         }, UPDATE_PERIOD, TimeUnit.MILLISECONDS);
+    }*/
+
+    private void refreshReport() {
+        System.out.println("Report was Refreshed!!!!!");
+        refresh();
     }
 
-    public <T extends Report> T loadReportController(final String fxmlResource) {
+    public <T extends ReportController> T loadReportController(final String fxmlResource) {
         try {
             final FXMLLoader fxmlLoader =
                     new FXMLLoader(PortfolioReportController.class.getResource(fxmlResource), resources);
 
             reportControllerPaneProperty.setValue(fxmlLoader.load());
 
-            T controller = fxmlLoader.getController();
-            report.setValue(controller);
+            T reportController = fxmlLoader.getController();
 
-            return controller;
-        } catch (IOException e) {
+            // install handler for refreshing a report
+            reportController.setRefreshRunnable(this::refreshReport);
+
+            // save the reference to the report
+            reportController.getReport(report::set);
+
+            return reportController;
+        } catch (final IOException e) {
             StaticUIMethods.displayException(e);
             return null;
         }
@@ -389,14 +364,10 @@ public class ReportViewerDialogController {
      * @param index active page index
      */
     private void setPageIndex(final int index) {
-
-
-
-            if (index >= 0 && index < pageCount.get()) {
-                pageIndex.setValue(index);
-                updateStatus(MessageFormat.format(resources.getString("Pattern.Pages"), index + 1, pageCount.get()));
-            }
-         else {
+        if (index >= 0 && index < pageCount.get()) {
+            pageIndex.setValue(index);
+            updateStatus(MessageFormat.format(resources.getString("Pattern.Pages"), index + 1, pageCount.get()));
+        } else {
             updateStatus("");
         }
     }
@@ -423,20 +394,29 @@ public class ReportViewerDialogController {
         }
     }
 
+    // TODO: Use the busy pane when generating the pages
     private void refresh() {
         final List<Node> children = pagePane.getChildren();
         children.clear();
 
-        for (int i = 0; i < pageCount.get(); i++) {
-            try {
-                final BufferedImage bufferedImage = report.get().renderImage(i, 300);
+        if (report.get() != null) {
+            pageCount.set(report.get().getPageCount());
 
-                final ImageView imageView = new ImageView(SwingFXUtils.toFXImage(bufferedImage, null));
-                imageView.setEffect(dropShadow);
+            for (int i = 0; i < pageCount.get(); i++) {
+                try {
 
-                children.add(imageView);
-            }  catch (IOException ex) {
-                StaticUIMethods.displayException(ex);
+                    // TODO, calculate the dpi based on zoom and native screen resolution
+                    final BufferedImage bufferedImage = report.get().renderImage(i, 96);
+
+                    final ImageView imageView = new ImageView(SwingFXUtils.toFXImage(bufferedImage, null));
+                    imageView.setEffect(dropShadow);
+
+                    children.add(imageView);
+                } catch (IOException ex) {
+                    StaticUIMethods.displayException(ex);
+                }
+
+                System.out.println("created page: " + i);
             }
         }
 
@@ -449,7 +429,7 @@ public class ReportViewerDialogController {
 
     @FXML
     private void handleSaveAction() {
-        Preferences preferences = Preferences.userNodeForPackage(JasperViewerDialogController.class);
+        Preferences preferences = Preferences.userNodeForPackage(ReportViewerDialogController.class);
 
         final String lastDir = preferences.get(LAST_DIR, null);
 

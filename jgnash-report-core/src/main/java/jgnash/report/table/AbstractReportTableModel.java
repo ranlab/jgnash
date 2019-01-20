@@ -1,6 +1,6 @@
 /*
  * jGnash, a personal finance application
- * Copyright (C) 2001-2018 Craig Cavanaugh
+ * Copyright (C) 2001-2019 Craig Cavanaugh
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -34,13 +34,21 @@ import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 
 /**
- * Report model interface
+ * Base Report model class
+ *
+ * The report must contain a minimum of one group defined by {@code ColumnStyle.GROUP_NO_HEADER} or
+ * {@code ColumnStyle.GROUP}.  If a is not defined/assigned, all rows will be grouped together.
  *
  * TODO, convert to extend a report specific interface
  *
  * @author Craig Cavanaugh
  */
 public abstract class AbstractReportTableModel extends AbstractTableModel {
+
+    /**
+     * Default group for unassigned rows.
+     */
+    public static final String DEFAULT_GROUP = "_default_";
 
     public abstract CurrencyNode getCurrency();
 
@@ -88,10 +96,10 @@ public abstract class AbstractReportTableModel extends AbstractTableModel {
     }
 
     public String getGroup(final int row) {
-        String group = "";
+        String group = DEFAULT_GROUP;   // default group if row is not assigned
 
         for (int i = 0; i < getColumnCount(); i++) {
-            if (getColumnStyle(i) == ColumnStyle.GROUP) {
+            if (getColumnStyle(i) == ColumnStyle.GROUP || getColumnStyle(i) == ColumnStyle.GROUP_NO_HEADER) {
                 group = getValueAt(row, i).toString();
             }
         }

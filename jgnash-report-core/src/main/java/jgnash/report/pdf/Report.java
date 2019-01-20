@@ -1,6 +1,6 @@
 /*
  * jGnash, a personal finance application
- * Copyright (C) 2001-2018 Craig Cavanaugh
+ * Copyright (C) 2001-2019 Craig Cavanaugh
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@ import jgnash.resource.util.ResourceUtils;
 import jgnash.text.CommodityFormat;
 import jgnash.time.DateUtils;
 import jgnash.util.NotNull;
+
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.pdfbox.io.MemoryUsageSetting;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -57,6 +58,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.prefs.Preferences;
 
+import static jgnash.report.table.AbstractReportTableModel.DEFAULT_GROUP;
 import static jgnash.util.LogUtil.logSevere;
 
 /**
@@ -66,13 +68,15 @@ import static jgnash.util.LogUtil.logSevere;
  * <p>
  * The origin of a PDFBox page is the bottom left corner vs. a report being created from the top down.  Report layout
  * logic is from top down with use of a method to convert to PDF coordinate system.
+ * <p>
+ * This class is abstract to force isolation of Preferences through simple extension of the class
  *
  * @author Craig Cavanaugh
  * <p>
  * TODO: crosstabulation
  */
 @SuppressWarnings("WeakerAccess")
-public class Report implements AutoCloseable {
+public abstract class Report implements AutoCloseable {
 
     private static final int MAX_MEMORY_USAGE = 500_000;    // allow 1/2 meg reports in memory before a scratch file is used
 
@@ -113,6 +117,8 @@ public class Report implements AutoCloseable {
         setFooterFont(PDType1Font.HELVETICA_OBLIQUE);
 
         setBaseFontSize(DEFAULT_BASE_FONT_SIZE);
+
+        setPageFormat(getPageFormat()); // restore the page format
     }
 
     public void clearReport() {
@@ -127,7 +133,7 @@ public class Report implements AutoCloseable {
 
     public final PageFormat getPageFormat() {
         if (pageFormat == null) {
-            pageFormat = ReportPrintFactory.getDefaultPage();
+            pageFormat = ReportPrintFactory.getPageFormat(getPreferences());
         }
 
         return pageFormat;
@@ -137,6 +143,7 @@ public class Report implements AutoCloseable {
         Objects.requireNonNull(pageFormat);
 
         this.pageFormat = pageFormat;
+        ReportPrintFactory.savePageFormat(getPreferences(), pageFormat);
     }
 
     @NotNull
@@ -293,6 +300,14 @@ public class Report implements AutoCloseable {
                     groupInfo.rows++;
                 }
             }
+        }
+
+        // create a default group for tables that do not specify one
+        if (groupInfoMap.isEmpty()) {
+            GroupInfo groupInfo = new GroupInfo(DEFAULT_GROUP);
+            groupInfo.rows = tableModel.getRowCount();
+
+            groupInfoMap.put(DEFAULT_GROUP, groupInfo);
         }
 
         // perform summation
@@ -619,14 +634,16 @@ public class Report implements AutoCloseable {
         contentStream.setFont(getHeaderFont(), getBaseFontSize() * 2);
         drawText(contentStream, xPos, docYToPageY(docY), title);
 
-        width = getStringWidth(subTitle, getFooterFont(), getFooterFontSize());
-        xPos = (getAvailableWidth() / 2f) - (width / 2f) + getLeftMargin();
-        docY += getFooterFontSize() * 1.5f;
+        if (subTitle != null && subTitle.length() > 0) {    // subtitle may be empty
+            width = getStringWidth(subTitle, getFooterFont(), getFooterFontSize());
+            xPos = (getAvailableWidth() / 2f) - (width / 2f) + getLeftMargin();
+            docY += getFooterFontSize() * 1.5f;
 
-        contentStream.setFont(getFooterFont(), getFooterFontSize());
-        drawText(contentStream, xPos, docYToPageY(docY), subTitle);
+            contentStream.setFont(getFooterFont(), getFooterFontSize());
+            drawText(contentStream, xPos, docYToPageY(docY), subTitle);
 
-        docY += getFooterFontSize() * 2.0f;   // add a margin below the sub title
+            docY += getFooterFontSize() * 2.0f;   // add a margin below the sub title
+        }
 
         return docY;
     }
@@ -709,14 +726,14 @@ public class Report implements AutoCloseable {
             }
         }
 
-        float[] widths = new float[visibleColumnCount]; // calculated optimal widths
+        float[] widths = new float[reportModel.getColumnCount()]; // calculated optimal widths
 
         float measuredWidth = 0;
         float fixedWidth = 0;
         boolean compressAll = false;
         int flexColumns = 0;
 
-        int col = 0;
+        //int col = 0;
         for (int i = 0; i < reportModel.getColumnCount(); i++) {
             if (reportModel.isColumnVisible(i)) {
 
@@ -725,17 +742,17 @@ public class Report implements AutoCloseable {
                 float headerWidth = getStringWidth(reportModel.getColumnName(i), getHeaderFont(), getBaseFontSize()) + getCellPadding() * 2;
                 float cellTextWidth = getStringWidth(protoValue, getTableFont(), getBaseFontSize()) + getCellPadding() * 2;
 
-                widths[col] = Math.max(headerWidth, cellTextWidth);
+                widths[i] = Math.max(headerWidth, cellTextWidth);
 
-                measuredWidth += widths[col];
+                measuredWidth += widths[i];
 
                 if (reportModel.isColumnFixedWidth(i)) {
-                    fixedWidth += widths[col];
+                    fixedWidth += widths[i];
                 } else {
                     flexColumns++;
                 }
-
-                col++;
+            } else {
+                widths[i] = 0;    // not visible, but a place holder is needed
             }
         }
 
@@ -752,15 +769,17 @@ public class Report implements AutoCloseable {
             widthDelta = (getAvailableWidth() - measuredWidth) / flexColumns;
         }
 
-        col = 0;
+        //col = 0;
         for (int i = 0; i < reportModel.getColumnCount(); i++) {
             if (reportModel.isColumnVisible(i)) {
                 if (compressAll || !reportModel.isColumnFixedWidth(i)) {
-                    widths[col] += widthDelta;
+                    widths[i] += widthDelta;
                 }
-                col++;
+                //col++;
             }
         }
+
+        System.out.println("number of column widths: " + widths.length);
 
         return widths;
     }

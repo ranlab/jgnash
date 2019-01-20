@@ -1,6 +1,6 @@
 /*
  * jGnash, a personal finance application
- * Copyright (C) 2001-2018 Craig Cavanaugh
+ * Copyright (C) 2001-2019 Craig Cavanaugh
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -87,11 +87,11 @@ public abstract class BaseDynamicJasperReport {
     protected abstract void displayError(final String message);
 
     public final void setPageFormat(final PageFormat pageFormat) {
-        ReportPrintFactory.savePageFormat(this, pageFormat);
+        ReportPrintFactory.savePageFormat(getPreferences(), pageFormat);
     }
 
     public final PageFormat getPageFormat() {
-        return ReportPrintFactory.getPageFormat(this);
+        return ReportPrintFactory.getPageFormat(getPreferences());
     }
 
     public final int getBaseFontSize() {
@@ -310,7 +310,6 @@ public abstract class BaseDynamicJasperReport {
         return headerStyle;
     }
 
-    @SuppressWarnings("ConstantConditions")
     protected final JasperPrint createJasperPrint(final AbstractReportTableModel model, final boolean formatForCSV) {
         logger.info(rb.getString("Message.ProcessingReportData"));
 
