@@ -49,13 +49,13 @@ import javafx.scene.layout.Pane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
-import javafx.stage.Screen;
 import jgnash.report.pdf.Report;
 import jgnash.resource.util.ResourceUtils;
 import jgnash.uifx.StaticUIMethods;
 import jgnash.uifx.control.BusyPane;
 import jgnash.uifx.report.PortfolioReportController;
 import jgnash.uifx.util.InjectFXML;
+import jgnash.uifx.util.JavaFXUtils;
 import jgnash.uifx.views.main.MainView;
 import jgnash.util.DefaultDaemonThreadFactory;
 import jgnash.util.FileUtils;
@@ -75,6 +75,7 @@ import java.util.Locale;
 import java.util.ResourceBundle;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.prefs.Preferences;
 
 /**
@@ -245,9 +246,8 @@ public class ReportViewerDialogController {
             }
         });
 
-        fontSizeSpinner.valueProperty().addListener((observable, oldValue, newValue) -> {
-            report.get().setBaseFontSize(newValue.floatValue());
-        });
+        fontSizeSpinner.valueProperty().addListener((observable, oldValue, newValue) ->
+                report.get().setBaseFontSize(newValue.floatValue()));
 
         pagePane.setSpacing(PAGE_BORDER);
         pagePane.setPadding(new Insets(PAGE_BORDER));
@@ -301,31 +301,6 @@ public class ReportViewerDialogController {
 
         setZoomRatio(1);
     }
-
-    /*private void createJasperPrint(final DynamicJasperReport dynamicJasperReport) {
-
-        // rate limit creation when print options are occurring quickly
-        reportExecutor.schedule(() -> {
-            if (reportExecutor.getQueue().size() < 1) {   // ignore if we already have one waiting in the queue
-                final Task<Void> task = new Task<Void>() {
-                    @Override
-                    protected Void call() {
-                        updateMessage(resources.getString("Message.CompilingReport"));
-                        updateProgress(-1, Long.MAX_VALUE);
-
-                        //jasperPrint.set(dynamicJasperReport.createJasperPrint(false));
-                        return null;
-                    }
-                };
-
-                Platform.runLater(() -> {
-                    busyPane.setTask(task);
-                    new Thread(task).start();
-                });
-
-            }
-        }, UPDATE_PERIOD, TimeUnit.MILLISECONDS);
-    }*/
 
     private void refreshReport() {
         System.out.println("Report was Refreshed!!!!!");
@@ -390,34 +365,57 @@ public class ReportViewerDialogController {
     private void refresh() {
         final List<Node> children = pagePane.getChildren();
         children.clear();
-
-        if (report.get() != null) {
-            pageCount.set(report.get().getPageCount());
-
-            for (int i = 0; i < pageCount.get(); i++) {
-                try {
-
-                    // report resolution is fixed and the ImageView width and height are adjusted to the zoom value
-                    final BufferedImage bufferedImage = report.get().renderImage(i, REPORT_RESOLUTION * UPSCALING);
-
-                    final ImageView imageView = new ImageView(SwingFXUtils.toFXImage(bufferedImage, null));
-
-                    imageView.setEffect(dropShadow);
-
-                    // bind the width and height to the zoom level
-                    imageView.fitWidthProperty().bind(zoomProperty.multiply(bufferedImage.getWidth() / UPSCALING));
-                    imageView.fitHeightProperty().bind(zoomProperty.multiply(bufferedImage.getHeight() / UPSCALING));
-
-                    children.add(imageView);
-                } catch (IOException ex) {
-                    StaticUIMethods.displayException(ex);
-                }
-
-                System.out.println("created page: " + i);
-            }
-        }
-
+        pageCount.set(0);
         setPageIndex(0);
+
+        reportExecutor.schedule(() -> {
+            if (reportExecutor.getQueue().size() < 1) {   // ignore if we already have one waiting in the queue
+
+                final Task<Void> task = new Task<Void>() {
+                    @Override
+                    protected Void call() {
+                        updateMessage(resources.getString("Message.CompilingReport"));
+                        updateProgress(-1, Long.MAX_VALUE);
+
+                        if (report.get() != null) {
+
+                            for (int i = 0; i < report.get().getPageCount(); i++) {
+                                try {
+
+                                    // report resolution is fixed and the ImageView width and height are adjusted to the zoom value
+                                    final BufferedImage bufferedImage = report.get().renderImage(i, REPORT_RESOLUTION * UPSCALING);
+
+                                    JavaFXUtils.runLater(() -> {
+
+                                        final ImageView imageView = new ImageView(SwingFXUtils.toFXImage(bufferedImage, null));
+
+                                        imageView.setEffect(dropShadow);
+
+                                        // bind the width and height to the zoom level
+                                        imageView.fitWidthProperty().bind(zoomProperty.multiply(bufferedImage.getWidth() / UPSCALING));
+                                        imageView.fitHeightProperty().bind(zoomProperty.multiply(bufferedImage.getHeight() / UPSCALING));
+
+                                        children.add(imageView);
+
+                                        pageCount.set(pageCount.get() + 1);
+                                    });
+
+                                } catch (final IOException ex) {
+                                    StaticUIMethods.displayException(ex);
+                                }
+                            }
+                        }
+                        return null;
+                    }
+                };
+
+                Platform.runLater(() -> {
+                    busyPane.setTask(task);
+                    new Thread(task).start();
+                });
+
+            }
+        }, UPDATE_PERIOD, TimeUnit.MILLISECONDS);
     }
 
     private void updateStatus(final String status) {
