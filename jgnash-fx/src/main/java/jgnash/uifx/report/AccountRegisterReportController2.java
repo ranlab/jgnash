@@ -17,13 +17,6 @@
  */
 package jgnash.uifx.report;
 
-import javafx.beans.value.ChangeListener;
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
-import javafx.collections.transformation.FilteredList;
-import javafx.fxml.FXML;
-import javafx.scene.control.CheckBox;
-import javafx.scene.control.TextField;
 import jgnash.engine.Account;
 import jgnash.engine.AccountGroup;
 import jgnash.engine.AccountType;
@@ -46,7 +39,6 @@ import jgnash.uifx.control.DatePickerEx;
 import jgnash.uifx.report.pdf.ReportController;
 import jgnash.uifx.views.register.RegisterFactory;
 import jgnash.util.Nullable;
-
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 
 import java.io.IOException;
@@ -61,6 +53,14 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.prefs.Preferences;
 import java.util.stream.Collectors;
+
+import javafx.beans.value.ChangeListener;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import javafx.collections.transformation.FilteredList;
+import javafx.fxml.FXML;
+import javafx.scene.control.CheckBox;
+import javafx.scene.control.TextField;
 
 /**
  * Account Register Report.
@@ -190,6 +190,7 @@ public class AccountRegisterReportController2 implements ReportController {
 
         try {
             report.addTable(model, accountComboBox.getValue().getName(), endDatePicker.getValue().toString());
+            report.addFooter();
         } catch (final IOException e) {
             e.printStackTrace();
         }
