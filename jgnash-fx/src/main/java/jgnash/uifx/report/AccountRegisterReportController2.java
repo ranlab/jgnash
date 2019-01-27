@@ -79,7 +79,6 @@ public class AccountRegisterReportController2 implements ReportController {
         report.setTableFont(PDType1Font.COURIER);
         report.setHeaderFont(PDType1Font.HELVETICA_BOLD);
         report.setCellPadding(2.5f);
-        report.setBaseFontSize(9);
     }
 
     private Preferences getPreferences() {

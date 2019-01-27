@@ -78,7 +78,9 @@ import static jgnash.util.LogUtil.logSevere;
 @SuppressWarnings("WeakerAccess")
 public abstract class Report implements AutoCloseable {
 
-    private static final int MAX_MEMORY_USAGE = 500_000;    // allow 1/2 meg reports in memory before a scratch file is used
+    private static final int MAX_MEMORY_USAGE = 10_000_000;    // allow 10 meg reports in memory before a scratch file is used
+
+    private static final String BASE_FONT_SIZE = "baseFontSize";
 
     protected static final ResourceBundle rb = ResourceUtils.getBundle();
 
@@ -116,7 +118,7 @@ public abstract class Report implements AutoCloseable {
         setTableFont(PDType1Font.HELVETICA);
         setFooterFont(PDType1Font.HELVETICA_OBLIQUE);
 
-        setBaseFontSize(DEFAULT_BASE_FONT_SIZE);
+        baseFontSize = getPreferences().getFloat(BASE_FONT_SIZE, DEFAULT_BASE_FONT_SIZE);
 
         setPageFormat(getPageFormat()); // restore the page format
     }
@@ -161,6 +163,7 @@ public abstract class Report implements AutoCloseable {
 
     public void setBaseFontSize(float tableFontSize) {
         this.baseFontSize = tableFontSize;
+        getPreferences().putFloat(BASE_FONT_SIZE, tableFontSize);
     }
 
     private float getTableRowHeight() {

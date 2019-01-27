@@ -249,8 +249,13 @@ public class ReportViewerDialogController {
             }
         });
 
-        fontSizeSpinner.valueProperty().addListener((observable, oldValue, newValue) ->
-                report.get().setBaseFontSize(newValue.floatValue()));
+        fontSizeSpinner.valueProperty().addListener((observable, oldValue, newValue) -> {
+            report.get().setBaseFontSize(newValue.floatValue());
+
+            if (reportController != null) {
+                reportController.refreshReport();
+            }
+        });
 
         pagePane.setSpacing(PAGE_BORDER);
         pagePane.setPadding(new Insets(PAGE_BORDER));
