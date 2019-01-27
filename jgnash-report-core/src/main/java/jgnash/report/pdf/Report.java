@@ -366,13 +366,10 @@ public abstract class Report implements AutoCloseable {
 
         contentStream.setNonStrokingColor(headerTextColor);
 
-        int col = 0;
         for (int i = 0; i < reportModel.getColumnCount(); i++) {
             if (reportModel.isColumnVisible(i)) {
                 drawText(contentStream, xPos, yPos, reportModel.getColumnName(i));
-                xPos += columnWidths[col];
-
-                col++;
+                xPos += columnWidths[i];
             }
         }
 
@@ -393,7 +390,6 @@ public abstract class Report implements AutoCloseable {
                 xPos = getLeftMargin() + getCellPadding();
                 yPos -= getTableRowHeight();
 
-                col = 0;
                 for (int i = 0; i < reportModel.getColumnCount(); i++) {
 
                     if (reportModel.isColumnVisible(i)) {
@@ -402,7 +398,7 @@ public abstract class Report implements AutoCloseable {
 
                         if (value != null) {
                             float shift = 0;
-                            float availWidth = columnWidths[col] - getCellPadding() * 2;
+                            float availWidth = columnWidths[i] - getCellPadding() * 2;
 
                             final String text = truncateText(formatValue(reportModel.getValueAt(row, i), i, reportModel), availWidth,
                                     getTableFont(), getBaseFontSize());
@@ -414,9 +410,7 @@ public abstract class Report implements AutoCloseable {
                             drawText(contentStream, xPos + shift, yPos, text);
                         }
 
-                        xPos += columnWidths[col];
-
-                        col++;
+                        xPos += columnWidths[i];
                     }
                 }
 
@@ -438,13 +432,10 @@ public abstract class Report implements AutoCloseable {
         yPos = yTop;
         xPos = getLeftMargin();
 
-        col = 0;
         for (int i = 0; i < reportModel.getColumnCount(); i++) {
             if (reportModel.isColumnVisible(i)) {
                 drawLine(contentStream, xPos, yPos, xPos, yPos - getTableRowHeight() * (rowsWritten + 1));
-                xPos += columnWidths[col];
-
-                col++;
+                xPos += columnWidths[i];
             }
         }
 
