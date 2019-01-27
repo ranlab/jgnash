@@ -96,7 +96,7 @@ public abstract class Report implements AutoCloseable {
 
     private PDFont footerFont;
 
-    private float cellPadding = 2;
+    private float cellPadding = 2.5f;
 
     final Color footerBackGround = Color.LIGHT_GRAY;
 
@@ -115,12 +115,15 @@ public abstract class Report implements AutoCloseable {
     public Report() {
         this.pdfDocument = new PDDocument(MemoryUsageSetting.setupMixed(MAX_MEMORY_USAGE));
 
-        setTableFont(PDType1Font.HELVETICA);
+        setTableFont(PDType1Font.COURIER);
+        setHeaderFont(PDType1Font.HELVETICA_BOLD);
         setFooterFont(PDType1Font.HELVETICA_OBLIQUE);
 
+        // restore font size
         baseFontSize = getPreferences().getFloat(BASE_FONT_SIZE, DEFAULT_BASE_FONT_SIZE);
 
-        setPageFormat(getPageFormat()); // restore the page format
+        // restore the page format
+        setPageFormat(getPageFormat());
     }
 
     public void clearReport() {

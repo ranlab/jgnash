@@ -25,7 +25,6 @@ import jgnash.uifx.control.AccountComboBox;
 import jgnash.uifx.control.DatePickerEx;
 import jgnash.uifx.report.pdf.ReportController;
 import jgnash.util.Nullable;
-import org.apache.pdfbox.pdmodel.font.PDType1Font;
 
 import java.io.IOException;
 import java.time.LocalDate;
@@ -75,10 +74,6 @@ public class AccountRegisterReportController2 implements ReportController {
 
     public AccountRegisterReportController2() {
         super();
-
-        report.setTableFont(PDType1Font.COURIER);
-        report.setHeaderFont(PDType1Font.HELVETICA_BOLD);
-        report.setCellPadding(2.5f);
     }
 
     private Preferences getPreferences() {
