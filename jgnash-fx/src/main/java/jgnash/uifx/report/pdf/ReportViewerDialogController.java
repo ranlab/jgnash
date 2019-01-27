@@ -49,6 +49,7 @@ import javafx.scene.layout.Pane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
+
 import jgnash.report.pdf.Report;
 import jgnash.resource.util.ResourceUtils;
 import jgnash.uifx.StaticUIMethods;
@@ -369,7 +370,6 @@ public class ReportViewerDialogController {
         final List<Node> children = pagePane.getChildren();
         children.clear();
         pageCount.set(0);
-        setPageIndex(0);
 
         reportExecutor.schedule(() -> {
             if (reportExecutor.getQueue().size() < 1) {   // ignore if we already have one waiting in the queue
@@ -408,6 +408,9 @@ public class ReportViewerDialogController {
                                 }
                             }
                         }
+
+                        JavaFXUtils.runLater(() -> setPageIndex(0));
+
                         return null;
                     }
                 };
