@@ -1,5 +1,6 @@
 rootProject.name = 'jgnash2'
 
+include ':jgnash'
 include ':jgnash-bayes'
 include ':jgnash-help'
 include ':jgnash-resources'
@@ -10,7 +11,6 @@ include ':jgnash-convert'
 include ':jgnash-plugin'
 include ':jgnash-fx'
 include ':jgnash-fx-test-plugin'
-include ':jgnash'
 
 include ':jidesoft'
 include ':mt940'
