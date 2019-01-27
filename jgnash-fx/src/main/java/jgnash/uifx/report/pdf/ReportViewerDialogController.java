@@ -183,6 +183,8 @@ public class ReportViewerDialogController {
 
     private final IntegerProperty pageCount = new SimpleIntegerProperty();
 
+    private ReportController reportController;
+
     /**
      * Used to limit report update rates.
      */
@@ -322,6 +324,8 @@ public class ReportViewerDialogController {
             // save the reference to the report
             reportController.getReport(report::set);
 
+            this.reportController = reportController;
+
             return reportController;
         } catch (final IOException e) {
             StaticUIMethods.displayException(e);
@@ -361,7 +365,6 @@ public class ReportViewerDialogController {
         }
     }
 
-    // TODO: Use the busy pane when generating the pages
     private void refresh() {
         final List<Node> children = pagePane.getChildren();
         children.clear();
@@ -494,8 +497,7 @@ public class ReportViewerDialogController {
 
         if (format != oldFormat) {
             report.get().setPageFormat(format);
-
-            Platform.runLater(this::refresh);
+            reportController.refreshReport();
         }
     }
 

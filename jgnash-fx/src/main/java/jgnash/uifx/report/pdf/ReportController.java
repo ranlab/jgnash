@@ -28,8 +28,23 @@ import java.util.function.Consumer;
  */
 public interface ReportController {
 
+    /**
+     * Installs a callback to notify the report viewer that the underlying report has changed itself.
+     *
+     * @param runnable Runnable / callback that should be executed
+     */
     void setRefreshRunnable(final Runnable runnable);
 
+    /**
+     * Functional return of the report
+     *
+     * @param report report consumer
+     */
     void getReport(Consumer<Report> report);
+
+    /**
+     * Forces a refresh/rebuild of the report
+     */
+    void refreshReport();
 
 }

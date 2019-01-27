@@ -120,6 +120,11 @@ public class AccountRegisterReportController2 implements ReportController {
         reportConsumer.accept(report);
     }
 
+    @Override
+    public void refreshReport() {
+        handleReportRefresh();
+    }
+
     public void setAccount(@Nullable final Account account) {
         if (account != null) {
             accountComboBox.setValue(account);

@@ -685,9 +685,7 @@ public abstract class Report implements AutoCloseable {
 
     private PDPage createPage() {
 
-        final PDPage page = new PDPage();
-
-        page.setMediaBox(new PDRectangle(0f, 0f, (float) getPageFormat().getWidth(),
+        final PDPage page = new PDPage(new PDRectangle(0f, 0f, (float) getPageFormat().getWidth(),
                 (float) getPageFormat().getHeight()));
 
         pdfDocument.addPage(page);  // add the page to the document

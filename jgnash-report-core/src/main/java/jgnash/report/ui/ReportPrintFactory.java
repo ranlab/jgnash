@@ -1,6 +1,6 @@
 /*
  * jGnash, a personal finance application
- * Copyright (C) 2001-2018 Craig Cavanaugh
+ * Copyright (C) 2001-2019 Craig Cavanaugh
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,8 +16,6 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 package jgnash.report.ui;
-
-import jgnash.report.ui.jasper.BaseDynamicJasperReport;
 
 import javax.print.PrintService;
 import javax.print.attribute.standard.MediaSize;
@@ -102,7 +100,7 @@ public class ReportPrintFactory {
     public static void savePageFormat(final Preferences p, final PageFormat format) {
         p.putInt(ORIENTATION, format.getOrientation());
 
-        Paper paper = format.getPaper();
+        final Paper paper = format.getPaper();
 
         p.putDouble(HEIGHT, paper.getHeight());
         p.putDouble(WIDTH, paper.getWidth());
@@ -131,9 +129,9 @@ public class ReportPrintFactory {
             return getDefaultPage();
         }
 
-        PrinterJob job = PrinterJob.getPrinterJob();
+        final PrinterJob job = PrinterJob.getPrinterJob();
 
-        PageFormat pf = job.defaultPage();
+        final PageFormat pf = job.defaultPage();
 
         pf.setOrientation(orientation);
 
