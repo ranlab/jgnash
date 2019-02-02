@@ -17,6 +17,44 @@
  */
 package jgnash.uifx.report.pdf;
 
+import jgnash.report.pdf.Report;
+import jgnash.resource.util.ResourceUtils;
+import jgnash.uifx.StaticUIMethods;
+import jgnash.uifx.control.BusyPane;
+import jgnash.uifx.report.PortfolioReportController;
+import jgnash.uifx.util.InjectFXML;
+import jgnash.uifx.util.JavaFXUtils;
+import jgnash.uifx.views.main.MainView;
+import jgnash.util.DefaultDaemonThreadFactory;
+import jgnash.util.FileUtils;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.printing.PDFPageable;
+import org.apache.pdfbox.rendering.PDFRenderer;
+
+import javax.print.attribute.HashPrintRequestAttributeSet;
+import javax.print.attribute.PrintRequestAttributeSet;
+import javax.print.attribute.Size2DSyntax;
+import javax.print.attribute.standard.MediaSize;
+import javax.print.attribute.standard.MediaSizeName;
+
+import java.awt.image.BufferedImage;
+import java.awt.print.PageFormat;
+import java.awt.print.PrinterJob;
+
+import java.io.File;
+import java.io.IOException;
+import java.text.DecimalFormat;
+import java.text.MessageFormat;
+import java.text.ParseException;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Locale;
+import java.util.ResourceBundle;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.prefs.Preferences;
+
 import javafx.application.Platform;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.IntegerProperty;
@@ -50,34 +88,7 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 
-import jgnash.report.pdf.Report;
-import jgnash.resource.util.ResourceUtils;
-import jgnash.uifx.StaticUIMethods;
-import jgnash.uifx.control.BusyPane;
-import jgnash.uifx.report.PortfolioReportController;
-import jgnash.uifx.util.InjectFXML;
-import jgnash.uifx.util.JavaFXUtils;
-import jgnash.uifx.views.main.MainView;
-import jgnash.util.DefaultDaemonThreadFactory;
-import jgnash.util.FileUtils;
-
-import java.awt.image.BufferedImage;
-import java.awt.print.PageFormat;
-import java.awt.print.PrinterJob;
-
-import java.io.File;
-import java.io.IOException;
-import java.text.DecimalFormat;
-import java.text.MessageFormat;
-import java.text.ParseException;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Locale;
-import java.util.ResourceBundle;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-import java.util.prefs.Preferences;
+import static jgnash.report.ui.ReportPrintFactory.pageFormatToMediaPrintableArea;
 
 /**
  * Viewer controller for PDFBox Reports.
@@ -472,6 +483,23 @@ public class ReportViewerDialogController {
         setPageIndex(index);
     }
 
+    private static MediaSizeName getMediaSizeName(final PDDocument document) throws IOException {
+
+        final PDFRenderer renderer = new PDFRenderer(document);
+        final BufferedImage image = renderer.renderImageWithDPI(0, 72f);
+
+        float w, h, swp;
+        w = image.getWidth() / 72f;
+        h = image.getHeight() / 72f;
+
+        if (w > h) {
+            swp = w;
+            w = h;
+            h = swp;
+        }
+        return MediaSize.findMedia(w, h, Size2DSyntax.INCH);
+    }
+
     @FXML
     private void handlePrintAction() {
         final Task<Void> task = new Task<Void>() {
@@ -480,9 +508,24 @@ public class ReportViewerDialogController {
                 try {
                     parent.get().setCursor(Cursor.WAIT);
 
-                    // TODO: Fixme
+                    final PDDocument pdDocument = report.get().getPdfDocument();
 
-                    StaticUIMethods.displayError("Fix me");
+                    final MediaSizeName size = getMediaSizeName(pdDocument);
+
+                    final PrinterJob printerJob = PrinterJob.getPrinterJob();
+                    printerJob.setPageable(new PDFPageable(pdDocument));
+
+                    final PrintRequestAttributeSet attr = new HashPrintRequestAttributeSet();
+                    attr.add(size);
+
+                    attr.add(pageFormatToMediaPrintableArea(report.get().getPageFormat()));
+
+                    if (printerJob.printDialog(attr)) {
+
+                        // print
+                        printerJob.print(attr);
+                    }
+
                 } catch (final Exception e) {
                     StaticUIMethods.displayException(e);
                 } finally {

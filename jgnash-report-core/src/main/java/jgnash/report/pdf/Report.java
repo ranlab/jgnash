@@ -132,6 +132,10 @@ public abstract class Report implements AutoCloseable {
         }
     }
 
+    public PDDocument getPdfDocument() {
+        return pdfDocument;
+    }
+
     public int getPageCount() {
         return pdfDocument.getNumberOfPages();
     }

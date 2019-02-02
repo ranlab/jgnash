@@ -18,6 +18,7 @@
 package jgnash.report.ui;
 
 import javax.print.PrintService;
+import javax.print.attribute.standard.MediaPrintableArea;
 import javax.print.attribute.standard.MediaSize;
 
 import java.awt.print.PageFormat;
@@ -44,6 +45,8 @@ public class ReportPrintFactory {
 
     private static final int DEFAULT_MARGIN = 43; // ~.60" margin
 
+    private static final float DPI = 72.0f;
+
     private ReportPrintFactory() {
     }
 
@@ -66,8 +69,8 @@ public class ReportPrintFactory {
         /* Create the default paper size with a default margin */
         Paper paper = new Paper();
 
-        int width = (int) (defaultMediaSize.getX(MediaSize.INCH) / (1f / 72f));
-        int height = (int) (defaultMediaSize.getY(MediaSize.INCH) / (1f / 72f));       
+        int width = (int) (defaultMediaSize.getX(MediaSize.INCH) / (1f / DPI));
+        int height = (int) (defaultMediaSize.getY(MediaSize.INCH) / (1f / DPI));
 
         paper.setSize(width, height);
         paper.setImageableArea(DEFAULT_MARGIN, DEFAULT_MARGIN, width - (2 * DEFAULT_MARGIN),
@@ -142,5 +145,12 @@ public class ReportPrintFactory {
         pf.setPaper(paper);
 
         return pf;
+    }
+
+    public static MediaPrintableArea pageFormatToMediaPrintableArea(final PageFormat pageFormat) {
+
+        return new MediaPrintableArea((float)pageFormat.getImageableX() / DPI, (float)pageFormat.getImageableY() / DPI,
+                (float)pageFormat.getImageableWidth() / DPI, (float)pageFormat.getImageableHeight() / DPI, MediaPrintableArea.INCH);
+
     }
 }
