@@ -171,6 +171,19 @@ public class ReportActions {
         reportPair.getStage().show();
     }
 
+    public static void displayNetWorthReport2() {
+        final FXMLUtils.Pair<ReportViewerDialogController> reportPair =
+                FXMLUtils.load(ReportViewerDialogController.class.getResource("ReportViewerDialog.fxml"),
+                        ResourceUtils.getString("Word.NetWorth"));
+
+        reportPair.getController().loadReportController("NetWorthReport2.fxml");
+
+        // Preserve size and location
+        StageUtils.addBoundsListener(reportPair.getStage(), NetWorthReportController2.class, MainView.getPrimaryStage());
+
+        reportPair.getStage().show();
+    }
+
     public static void exportProfitLossReport() {
         final Engine engine = EngineFactory.getEngine(EngineFactory.DEFAULT);
         Objects.requireNonNull(engine);

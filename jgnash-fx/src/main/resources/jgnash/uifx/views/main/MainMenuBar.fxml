@@ -95,6 +95,7 @@
             <MenuItem text="%Menu.AccountRegister.Name" onAction="#handleDisplayAccountRegisterReport"/>
             <MenuItem text="Account Register 2" onAction="#handleDisplayAccountRegisterReport2"/>
             <MenuItem text="%Menu.NetWorth.Name" onAction="#handleDisplayNetWorthReport"/>
+            <MenuItem text="Net Worth 2" onAction="#handleDisplayNetWorthReport2"/>
             <MenuItem text="%Menu.BalanceSheet.Name" onAction="#handleDisplayBalanceSheetReport"/>
             <MenuItem text="%Menu.ProfitLoss.Name" onAction="#handleDisplayProfitLossReport"/>
             <MenuItem text="%Menu.Portfolio.Name" onAction="#handleDisplayPortfolioReport"/>
