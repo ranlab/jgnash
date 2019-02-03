@@ -500,6 +500,8 @@ public class ReportViewerDialogController {
         return MediaSize.findMedia(w, h, Size2DSyntax.INCH);
     }
 
+    // TODO: Use the JavaFx API for printing.  Individual nodes/page must be created and feed to the API
+    // TODO page format modifications within the print dialog are ignored
     @FXML
     private void handlePrintAction() {
         final Task<Void> task = new Task<Void>() {
@@ -512,13 +514,16 @@ public class ReportViewerDialogController {
 
                     final MediaSizeName size = getMediaSizeName(pdDocument);
 
+                    final PDFPageable pdfPageable = new PDFPageable(pdDocument);
+
                     final PrinterJob printerJob = PrinterJob.getPrinterJob();
-                    printerJob.setPageable(new PDFPageable(pdDocument));
+                    printerJob.setPageable(pdfPageable);
 
                     final PrintRequestAttributeSet attr = new HashPrintRequestAttributeSet();
                     attr.add(size);
 
                     attr.add(pageFormatToMediaPrintableArea(report.get().getPageFormat()));
+                    //attr.add(pageFormatToMediaPrintableArea(pdfPageable.getPageFormat(0)));
 
                     if (printerJob.printDialog(attr)) {
 
