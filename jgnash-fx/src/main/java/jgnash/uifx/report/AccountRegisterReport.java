@@ -57,6 +57,10 @@ import javafx.collections.transformation.FilteredList;
  */
 public class AccountRegisterReport extends Report {
 
+    AccountRegisterReport() {
+        setForceGroupPagination(false);
+    }
+
     static AbstractReportTableModel createReportModel(final Account account, final LocalDate startDate,
                                                       final LocalDate endDate, final boolean showSplits,
                                                       final String memoFilter, final String payeeFilter,

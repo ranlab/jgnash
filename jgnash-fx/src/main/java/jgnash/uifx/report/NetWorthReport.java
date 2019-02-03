@@ -32,6 +32,7 @@ public class NetWorthReport extends AbstractSumByTypeReport {
 
     NetWorthReport() {
         setRunningTotal(true);
+        setForceGroupPagination(false);
     }
 
     @Override
@@ -56,7 +57,10 @@ public class NetWorthReport extends AbstractSumByTypeReport {
         return rb.getString("Word.NetWorth");
     }
 
-    *//**
+    */
+
+    /*
+    /**
      * Returns the legend for the grand total.
      *
      * @return report name

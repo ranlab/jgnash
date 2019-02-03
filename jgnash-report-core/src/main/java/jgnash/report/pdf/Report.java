@@ -72,8 +72,6 @@ import static jgnash.util.LogUtil.logSevere;
  * This class is abstract to force isolation of Preferences through simple extension of the class
  *
  * @author Craig Cavanaugh
- * <p>
- * TODO: crosstabulation
  */
 @SuppressWarnings("WeakerAccess")
 public abstract class Report implements AutoCloseable {
@@ -111,6 +109,8 @@ public abstract class Report implements AutoCloseable {
     final PDDocument pdfDocument;
 
     private PageFormat pageFormat;
+
+    private boolean forceGroupPagination = false;
 
     public Report() {
         this.pdfDocument = new PDDocument(MemoryUsageSetting.setupMixed(MAX_MEMORY_USAGE));
@@ -231,11 +231,18 @@ public abstract class Report implements AutoCloseable {
 
     public void addTable(final AbstractReportTableModel reportModel, final String title, final String subTitle) throws IOException {
 
+        boolean titleWritten = false;
+
         final float[] columnWidths = getColumnWidths(reportModel);
 
         final Set<GroupInfo> groupInfoSet = getGroups(reportModel);
 
-        float docY;
+        // calculate the maximum imageable height of the page before we get too close to the footer
+        float imageableBottom = (float) getPageFormat().getHeight() - getBottomMargin() - getTableRowHeight();
+
+        float docY = getTopMargin();   // start at top of the page with the margin
+
+        PDPage page = createPage(); // create the first page
 
         for (final GroupInfo groupInfo : groupInfoSet) {
 
@@ -243,15 +250,18 @@ public abstract class Report implements AutoCloseable {
 
             while (row < reportModel.getRowCount()) {
 
-                final PDPage page = createPage();
+                if (docY > imageableBottom || isForceGroupPagination()) {    // if near the bottom of the page
+                    docY = getTopMargin();   // start at top of the page with the margin
+                    page = createPage();
+                }
 
-                docY = getTopMargin();   // start at top of the page with the margin
+                try (final PDPageContentStream contentStream = new PDPageContentStream(pdfDocument, page, PDPageContentStream.AppendMode.APPEND, false)) {
 
-                try (final PDPageContentStream contentStream = new PDPageContentStream(pdfDocument, page)) {
-
-                    // add the table title if just starting and it's the 1st page of the report
-                    if (title != null && !title.isEmpty() && row == 0 && pdfDocument.getNumberOfPages() == 1) {
+                    // add the table title its not been added
+                    if (title != null && !title.isEmpty() && row == 0 && !titleWritten) {
                         docY = addReportTitle(contentStream, title, subTitle, docY);
+
+                        titleWritten = true;
                     }
 
                     // add the group subtitle if needed
@@ -277,6 +287,7 @@ public abstract class Report implements AutoCloseable {
                     // TODO, make sure the end of the page has not been reached
                     try (final PDPageContentStream contentStream = new PDPageContentStream(pdfDocument, page, PDPageContentStream.AppendMode.APPEND, false)) {
                         docY = addTableFooter(reportModel, groupInfo, contentStream, columnWidths, docY);
+                        docY += getBaseFontSize();  // add some padding
                     } catch (final IOException e) {
                         logSevere(Report.class, e);
                         throw (e);
@@ -528,7 +539,7 @@ public abstract class Report implements AutoCloseable {
             }
         }
 
-        return 0;
+        return yDoc;
     }
 
     private String formatValue(final Object value, final int column, final AbstractReportTableModel reportModel) {
@@ -732,7 +743,6 @@ public abstract class Report implements AutoCloseable {
         boolean compressAll = false;
         int flexColumns = 0;
 
-        //int col = 0;
         for (int i = 0; i < reportModel.getColumnCount(); i++) {
             if (reportModel.isColumnVisible(i)) {
 
@@ -768,17 +778,13 @@ public abstract class Report implements AutoCloseable {
             widthDelta = (getAvailableWidth() - measuredWidth) / flexColumns;
         }
 
-        //col = 0;
         for (int i = 0; i < reportModel.getColumnCount(); i++) {
             if (reportModel.isColumnVisible(i)) {
                 if (compressAll || !reportModel.isColumnFixedWidth(i)) {
                     widths[i] += widthDelta;
                 }
-                //col++;
             }
         }
-
-        System.out.println("number of column widths: " + widths.length);
 
         return widths;
     }
@@ -813,6 +819,14 @@ public abstract class Report implements AutoCloseable {
     @Override
     public void close() throws IOException {
         pdfDocument.close();
+    }
+
+    public boolean isForceGroupPagination() {
+        return forceGroupPagination;
+    }
+
+    public void setForceGroupPagination(boolean forceGroupPagination) {
+        this.forceGroupPagination = forceGroupPagination;
     }
 
     /**

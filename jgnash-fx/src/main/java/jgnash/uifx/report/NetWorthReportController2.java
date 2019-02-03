@@ -23,6 +23,7 @@ import jgnash.resource.util.ResourceUtils;
 import jgnash.time.DateUtils;
 import jgnash.uifx.control.DatePickerEx;
 import jgnash.uifx.report.pdf.ReportController;
+import jgnash.uifx.util.JavaFXUtils;
 
 import java.io.IOException;
 import java.time.LocalDate;
@@ -77,6 +78,9 @@ public class NetWorthReportController2 implements ReportController {
         endDatePicker.valueProperty().addListener((observable, oldValue, newValue) -> handleReportRefresh());
 
         hideZeroBalanceAccounts.onActionProperty().setValue(event -> handleReportRefresh());
+
+        // boot the report generation
+        JavaFXUtils.runLater(this::refreshReport);
     }
 
     @Override

@@ -134,7 +134,7 @@ class PDFBoxTableTest {
             e.printStackTrace();
         } finally {
             if (tempPath != null) {
-                //Files.deleteIfExists(tempPath);
+                Files.deleteIfExists(tempPath);
             }
 
             if (tempRasterPath != null) {
@@ -159,6 +159,7 @@ class PDFBoxTableTest {
             report.setHeaderFont(PDType1Font.HELVETICA_BOLD);
             report.setCellPadding(padding);
             report.setBaseFontSize(9);
+            report.setForceGroupPagination(true);
 
             final PageFormat pageFormat = (PageFormat) report.getPageFormat().clone();
             pageFormat.setOrientation(PageFormat.LANDSCAPE);
@@ -189,7 +190,7 @@ class PDFBoxTableTest {
             e.printStackTrace();
         } finally {
             if (tempPath != null) {
-                //Files.deleteIfExists(tempPath);
+                Files.deleteIfExists(tempPath);
             }
 
             if (tempRasterPath != null) {
