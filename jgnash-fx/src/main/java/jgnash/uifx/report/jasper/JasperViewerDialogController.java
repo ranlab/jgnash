@@ -1,6 +1,6 @@
 /*
  * jGnash, a personal finance application
- * Copyright (C) 2001-2018 Craig Cavanaugh
+ * Copyright (C) 2001-2019 Craig Cavanaugh
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -107,7 +107,7 @@ public final class JasperViewerDialogController {
 
     private static final float MAX_ZOOM = 10f;
 
-    private static final int DEFAULT_ZOOMS[] = {50, 75, 100, 125, 150, 175, 200};
+    private static final int[] DEFAULT_ZOOMS = {50, 75, 100, 125, 150, 175, 200};
 
     private static final int DEFAULT_ZOOM_INDEX = 2;
 
