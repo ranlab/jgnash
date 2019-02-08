@@ -59,20 +59,7 @@ public class NetWorthReport extends AbstractSumByTypeReport {
 
     */
 
-    /*
-    /**
-     * Returns the legend for the grand total.
-     *
-     * @return report name
-     *//*
-    @Override
-    public String getGrandTotalLegend() {
-        return getReportName();
-    }
 
-    @Override
-    public String getGroupFooterLabel() {
-        return rb.getString("Word.Subtotal");
-    }*/
+
 
 }

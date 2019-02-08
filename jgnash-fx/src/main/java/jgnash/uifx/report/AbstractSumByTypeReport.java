@@ -52,8 +52,6 @@ import java.util.stream.Collectors;
  */
 public abstract class AbstractSumByTypeReport extends Report {
 
-    // private static final String MONTHS = "months";
-
     private boolean runningTotal = true;
 
     private List<LocalDate> dates = Collections.emptyList();

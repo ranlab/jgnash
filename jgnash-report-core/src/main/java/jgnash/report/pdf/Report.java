@@ -295,6 +295,18 @@ public abstract class Report implements AutoCloseable {
                 }
             }
         }
+
+        if (reportModel.hasGlobalSummary()) {
+            System.out.println("Add global summary line");
+
+            try (final PDPageContentStream contentStream = new PDPageContentStream(pdfDocument, page, PDPageContentStream.AppendMode.APPEND, false)) {
+                addGlobalFooter(reportModel, contentStream, columnWidths, docY);
+            } catch (final IOException e) {
+                logSevere(Report.class, e);
+                throw (e);
+            }
+        }
+
     }
 
     /**
@@ -483,7 +495,7 @@ public abstract class Report implements AutoCloseable {
      * Writes a table footer to the report.
      *
      * @param reportModel   report model
-     * @param groupInfo     Group info to report on*
+     * @param groupInfo     Group info to report on
      * @param contentStream PDF content stream
      * @param columnWidths  column widths
      * @param yStart        start location from top of the page
@@ -540,6 +552,66 @@ public abstract class Report implements AutoCloseable {
         }
 
         return yDoc;
+    }
+
+    /**
+     * Writes a table footer to the report.
+     *
+     * @param reportModel   report model
+     * @param contentStream PDF content stream
+     * @param columnWidths  column widths
+     * @param yStart        start location from top of the page
+     * @throws IOException IO exception
+     */
+    private void addGlobalFooter(final AbstractReportTableModel reportModel, final PDPageContentStream contentStream,
+                                  float[] columnWidths, float yStart) throws IOException {
+
+        float yDoc = yStart + getTableRowHeight();
+
+        // add the footer background
+        contentStream.setNonStrokingColor(footerBackGround);
+        fillRect(contentStream, getLeftMargin(), docYToPageY(yDoc), getAvailableWidth(), getTableRowHeight());
+
+        drawLine(contentStream, getLeftMargin(), docYToPageY(yDoc), getAvailableWidth() + getLeftMargin(), docYToPageY(yDoc));
+        drawLine(contentStream, getLeftMargin(), docYToPageY(yDoc - getTableRowHeight()), getLeftMargin(), docYToPageY(yDoc));
+        drawLine(contentStream, getLeftMargin() + getAvailableWidth(), docYToPageY(yDoc - getTableRowHeight()),
+                getLeftMargin() + getAvailableWidth(), docYToPageY(yDoc));
+
+        contentStream.setFont(getTableFont(), getBaseFontSize());
+        contentStream.setNonStrokingColor(Color.BLACK);
+
+        // draw summation values
+        float xPos = getLeftMargin() + getCellPadding();
+
+        drawText(contentStream, xPos, docYToPageY(yDoc - getRowTextBaselineOffset()), reportModel.getGrandTotalLegend());
+
+        for (int c = 0; c < reportModel.getColumnCount(); c++) {
+
+            if (reportModel.isColumnVisible(c) && reportModel.isColumnSummed(c)) {
+
+                final Object value = reportModel.getGlobalSum(c);
+
+                if (value != null) {
+                    float shift = 0;
+                    float availWidth = columnWidths[c] - getCellPadding() * 2;
+
+                    final String text = truncateText(formatValue(reportModel.getGlobalSum(c), c, reportModel), availWidth,
+                            getTableFont(), getBaseFontSize());
+
+                    if (rightAlign(c, reportModel)) {
+                        shift = availWidth - getStringWidth(text, getTableFont(), getBaseFontSize());
+                    }
+
+                    drawText(contentStream, xPos + shift, docYToPageY(yDoc - getRowTextBaselineOffset()), text);
+                }
+            }
+
+            if (c < reportModel.getColumnCount() - 1) {
+                xPos += columnWidths[c];
+            }
+        }
+
+        //return yDoc;
     }
 
     private String formatValue(final Object value, final int column, final AbstractReportTableModel reportModel) {

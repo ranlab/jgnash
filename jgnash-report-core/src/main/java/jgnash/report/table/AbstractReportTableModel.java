@@ -151,6 +151,36 @@ public abstract class AbstractReportTableModel extends AbstractTableModel {
                 || getColumnStyle(columnIndex) == ColumnStyle.AMOUNT_SUM;
     }
 
+    private boolean isColumnGloballySummed(final int columnIndex) {
+        return getColumnStyle(columnIndex) == ColumnStyle.BALANCE_WITH_SUM_AND_GLOBAL;
+    }
+
+    public boolean hasGlobalSummary() {
+        boolean result = false;
+
+        for (int i = 0; i < getColumnCount(); i++) {
+            if (isColumnGloballySummed(i)) {
+                result = true;
+                break;
+            }
+        }
+
+        return result;
+    }
+
+    public BigDecimal getGlobalSum(final int columnIndex) {
+        BigDecimal sum = BigDecimal.ZERO;
+
+        if (getColumnClass(columnIndex).isAssignableFrom(BigDecimal.class)) {
+
+            for (int i = 0; i < getRowCount(); i++) {
+                sum = sum.add((BigDecimal) getValueAt(i, columnIndex));
+            }
+        }
+
+        return sum;
+    }
+
     /**
      * Returns the longest value for the specified column
      *
