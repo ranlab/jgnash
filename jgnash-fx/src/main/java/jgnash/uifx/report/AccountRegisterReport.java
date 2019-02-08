@@ -76,6 +76,16 @@ public class AccountRegisterReport extends Report {
 
     }
 
+    @Override
+    public String getGrandTotalLegend() {
+        return null;
+    }
+
+    @Override
+    public String getGroupFooterLabel() {
+        return rb.getString("Word.Totals");
+    }
+
     private static class AccountReportModel extends AbstractReportTableModel {
 
         private static final String INDENT_PREFIX = "  - ";
@@ -117,16 +127,6 @@ public class AccountRegisterReport extends Report {
             this.showTimestamp = showTimestamp;
 
             loadAccount();
-        }
-
-        @Override
-        public String getGrandTotalLegend() {
-            return null;
-        }
-
-        @Override
-        public String getGroupFooterLabel() {
-            return rb.getString("Word.Totals");
         }
 
         @Override
@@ -388,16 +388,6 @@ public class AccountRegisterReport extends Report {
             this.showTimestamp = showTimestamp;
 
             loadAccount();
-        }
-
-        @Override
-        public String getGrandTotalLegend() {
-            return null;
-        }
-
-        @Override
-        public String getGroupFooterLabel() {
-            return rb.getString("Word.Totals");
         }
 
         @Override

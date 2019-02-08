@@ -229,6 +229,24 @@ public abstract class Report implements AutoCloseable {
         this.footerFont = footerFont;
     }
 
+    /**
+     * Returns the legend for the grand total
+     *
+     * @return report name
+     */
+    public String getGrandTotalLegend() {
+        return ResourceUtils.getString("Word.Total");
+    }
+
+    /**
+     * Returns the general label for the group footer
+     *
+     * @return footer label
+     */
+    public String getGroupFooterLabel() {
+        return ResourceUtils.getString("Word.Subtotal");
+    }
+
     public void addTable(final AbstractReportTableModel reportModel, final String title, final String subTitle) throws IOException {
 
         boolean titleWritten = false;
@@ -523,7 +541,7 @@ public abstract class Report implements AutoCloseable {
         // draw summation values
         float xPos = getLeftMargin() + getCellPadding();
 
-        drawText(contentStream, xPos, docYToPageY(yDoc - getRowTextBaselineOffset()), reportModel.getGroupFooterLabel());
+        drawText(contentStream, xPos, docYToPageY(yDoc - getRowTextBaselineOffset()), getGroupFooterLabel());
 
         for (int c = 0; c < reportModel.getColumnCount(); c++) {
 
@@ -583,7 +601,7 @@ public abstract class Report implements AutoCloseable {
         // draw summation values
         float xPos = getLeftMargin() + getCellPadding();
 
-        drawText(contentStream, xPos, docYToPageY(yDoc - getRowTextBaselineOffset()), reportModel.getGrandTotalLegend());
+        drawText(contentStream, xPos, docYToPageY(yDoc - getRowTextBaselineOffset()), getGrandTotalLegend());
 
         for (int c = 0; c < reportModel.getColumnCount(); c++) {
 
