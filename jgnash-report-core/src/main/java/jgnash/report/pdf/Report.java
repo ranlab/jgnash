@@ -541,7 +541,23 @@ public abstract class Report implements AutoCloseable {
         // draw summation values
         float xPos = getLeftMargin() + getCellPadding();
 
-        drawText(contentStream, xPos, docYToPageY(yDoc - getRowTextBaselineOffset()), getGroupFooterLabel());
+        //drawText(contentStream, xPos, docYToPageY(yDoc - getRowTextBaselineOffset()), getGroupFooterLabel());
+
+        // search for first visible column width
+        for (int c = 0; c < reportModel.getColumnCount(); c++) {
+            if (reportModel.isColumnVisible(c)) {
+
+                // right align the text
+                final float availWidth = columnWidths[c] - getCellPadding() * 2;
+                final float shift = availWidth - getStringWidth(getGroupFooterLabel(), getTableFont(), getBaseFontSize());
+
+                drawText(contentStream, xPos + shift, docYToPageY(yDoc - getRowTextBaselineOffset()),
+                        getGroupFooterLabel());
+
+                break;
+            }
+        }
+
 
         for (int c = 0; c < reportModel.getColumnCount(); c++) {
 
@@ -601,7 +617,20 @@ public abstract class Report implements AutoCloseable {
         // draw summation values
         float xPos = getLeftMargin() + getCellPadding();
 
-        drawText(contentStream, xPos, docYToPageY(yDoc - getRowTextBaselineOffset()), getGrandTotalLegend());
+        // search for first visible column width
+        for (int c = 0; c < reportModel.getColumnCount(); c++) {
+            if (reportModel.isColumnVisible(c)) {
+
+                // right align the text
+                final float availWidth = columnWidths[c] - getCellPadding() * 2;
+                final float shift = availWidth - getStringWidth(getGrandTotalLegend(), getTableFont(), getBaseFontSize());
+
+                drawText(contentStream, xPos + shift, docYToPageY(yDoc - getRowTextBaselineOffset()),
+                        getGrandTotalLegend());
+
+                break;
+            }
+        }
 
         for (int c = 0; c < reportModel.getColumnCount(); c++) {
 
