@@ -16,8 +16,9 @@ allprojects {
     version = '3.0.0-dev'
 
     project.ext {
-        junitVersion = '5.3.1'
+        junitVersion = '5.4.0'
         junitextensionsVersion = '2.3.0'
+        awaitilityVersion = '3.1.6'
 
         picocliVersion = '3.5.2'
 
@@ -47,8 +48,6 @@ allprojects {
         jfreeChartVersion = '1.0.19'
         substanceVersion = '7.3'
         swingxVersion = '1.6.5-1'
-
-        awaitilityVersion = '3.1.2'
     }
 }
 
