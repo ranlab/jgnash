@@ -32,8 +32,8 @@ allprojects {
 
         xstreamVersion = '1.4.11.1'
 
-        hibernateVersion = '5.4.0.Final'
-        hikariVersion = '3.2.0'
+        hibernateVersion = '5.4.1.Final'
+        hikariVersion = '3.3.1'
 
         dynamicJasperVersion = '5.1.1'
         jasperReportsVersion = '6.4.3'
@@ -41,7 +41,7 @@ allprojects {
         
         pdfBoxVersion = '2.0.13'
 
-        nettyVersion = '4.1.32.Final'
+        nettyVersion = '4.1.33.Final'
 
         slf4jVersion = '1.8.0-beta2'
 
