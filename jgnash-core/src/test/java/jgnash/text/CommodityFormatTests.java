@@ -23,7 +23,8 @@ import org.junit.jupiter.api.Test;
 import java.text.NumberFormat;
 import java.util.Locale;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class CommodityFormatTests {
 
@@ -37,14 +38,11 @@ class CommodityFormatTests {
         currencyNode.setScale((byte) 2);
         currencyNode.setPrefix("€");
 
-        NumberFormat numberFormat = CommodityFormat.getFullNumberFormat(currencyNode);
+        final NumberFormat numberFormat = CommodityFormat.getFullNumberFormat(currencyNode);
 
-        System.out.println(numberFormat.getCurrency().getCurrencyCode());
+        assertEquals("EUR", numberFormat.getCurrency().getCurrencyCode());
 
-        //numberFormat = CommodityFormat.getFullNumberFormat(null);
-
-        assertTrue(true);
-
+        assertThrows(NullPointerException.class, () -> CommodityFormat.getFullNumberFormat(null));
 
     }
 }
