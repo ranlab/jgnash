@@ -71,7 +71,7 @@ public class NetWorthReportController2 implements ReportController {
 
         hideZeroBalanceAccounts.setSelected(preferences.getBoolean(HIDE_ZERO_BALANCE, true));
 
-        startDatePicker.setValue(LocalDate.now().minusMonths(preferences.getInt(MONTHS, 4)));
+        startDatePicker.setValue(LocalDate.now().minusMonths(preferences.getInt(MONTHS, 4) - 1));
 
         startDatePicker.valueProperty().addListener((observable, oldValue, newValue) -> handleReportRefresh());
 

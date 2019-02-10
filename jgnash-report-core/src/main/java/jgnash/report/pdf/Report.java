@@ -71,7 +71,7 @@ import static jgnash.util.LogUtil.logSevere;
  * <p>
  * This class is abstract to force isolation of Preferences through simple extension of the class
  *
- * // TODO: The report tables are being created twice with an update
+ * // FIXME: The report tables are being created twice with an update
  *
  * @author Craig Cavanaugh
  */
@@ -275,7 +275,8 @@ public abstract class Report implements AutoCloseable {
                     page = createPage();
                 }
 
-                try (final PDPageContentStream contentStream = new PDPageContentStream(pdfDocument, page, PDPageContentStream.AppendMode.APPEND, false)) {
+                try (final PDPageContentStream contentStream = new PDPageContentStream(pdfDocument, page,
+                        PDPageContentStream.AppendMode.APPEND, false)) {
 
                     // add the table title its not been added
                     if (title != null && !title.isEmpty() && row == 0 && !titleWritten) {
@@ -305,7 +306,8 @@ public abstract class Report implements AutoCloseable {
                 if (groupInfo.hasSummation() && row == reportModel.getRowCount()) {
 
                     // TODO, make sure the end of the page has not been reached
-                    try (final PDPageContentStream contentStream = new PDPageContentStream(pdfDocument, page, PDPageContentStream.AppendMode.APPEND, false)) {
+                    try (final PDPageContentStream contentStream = new PDPageContentStream(pdfDocument, page,
+                            PDPageContentStream.AppendMode.APPEND, false)) {
                         docY = addTableFooter(reportModel, groupInfo, contentStream, columnWidths, docY);
                         docY += getBaseFontSize();  // add some padding
                     } catch (final IOException e) {
@@ -317,9 +319,8 @@ public abstract class Report implements AutoCloseable {
         }
 
         if (reportModel.hasGlobalSummary()) {
-            System.out.println("Add global summary line");
-
-            try (final PDPageContentStream contentStream = new PDPageContentStream(pdfDocument, page, PDPageContentStream.AppendMode.APPEND, false)) {
+            try (final PDPageContentStream contentStream = new PDPageContentStream(pdfDocument, page,
+                    PDPageContentStream.AppendMode.APPEND, false)) {
                 addGlobalFooter(reportModel, contentStream, columnWidths, docY);
             } catch (final IOException e) {
                 logSevere(Report.class, e);
