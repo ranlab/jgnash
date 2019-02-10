@@ -71,6 +71,8 @@ import static jgnash.util.LogUtil.logSevere;
  * <p>
  * This class is abstract to force isolation of Preferences through simple extension of the class
  *
+ * // TODO: The report tables are being created twice with an update
+ *
  * @author Craig Cavanaugh
  */
 @SuppressWarnings("WeakerAccess")
@@ -990,9 +992,10 @@ public abstract class Report implements AutoCloseable {
         }
 
         public void addValue(final int column, final BigDecimal value) {
-            summationMap.put(column, getValue(column).add(value));
-
-            hasSummation = true;
+            if (value != null) {    // protect against a null / filtered value
+                summationMap.put(column, getValue(column).add(value));
+                hasSummation = true;
+            }
         }
 
         @NotNull

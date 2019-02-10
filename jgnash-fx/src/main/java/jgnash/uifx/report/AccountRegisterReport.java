@@ -131,11 +131,14 @@ public class AccountRegisterReport extends Report {
 
         @Override
         public int[] getColumnsToHide() {
-            if (showTimestamp) {
-                return super.getColumnsToHide();
+
+            if (!showTimestamp && sumAmounts) {
+                return new int[]{1, 9};
+            } else if (!showTimestamp) {
+                return new int[]{1};
             }
 
-            return new int[]{1};
+            return super.getColumnsToHide();
         }
 
         @Override
@@ -568,7 +571,11 @@ public class AccountRegisterReport extends Report {
         private final String filter;
 
         MemoPredicate(final String memo) {
-            filter = memo;
+            if (memo != null && !memo.isEmpty()) {
+                filter = memo.toLowerCase(Locale.getDefault());
+            } else {
+                filter = memo;
+            }
         }
 
         @Override
@@ -582,7 +589,11 @@ public class AccountRegisterReport extends Report {
         private final String filter;
 
         PayeePredicate(final String payee) {
-            filter = payee;
+            if (payee != null && !payee.isEmpty()) {
+                filter = payee.toLowerCase(Locale.getDefault());
+            } else {
+                filter = payee;
+            }
         }
 
         @Override
