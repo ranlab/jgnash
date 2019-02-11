@@ -17,9 +17,7 @@
  */
 package jgnash.uifx.report;
 
-
 import jgnash.engine.AccountGroup;
-import jgnash.resource.util.ResourceUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -50,7 +48,7 @@ public class NetWorthReport extends AbstractSumByTypeReport {
 
     @Override
     public String getGrandTotalLegend() {
-        return ResourceUtils.getString("Word.NetWorth");
+        return rb.getString("Word.NetWorth");
     }
 
 }
