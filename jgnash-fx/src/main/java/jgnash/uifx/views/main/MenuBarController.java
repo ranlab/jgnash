@@ -474,6 +474,11 @@ public class MenuBarController implements MessageListener {
     }
 
     @FXML
+    private void handleDisplayBalanceSheetReport2() {
+        ReportActions.displayBalanceSheetReport2();
+    }
+
+    @FXML
     private void handleDisplayNetWorthReport() {
         ReportActions.displayNetWorthReport();
     }

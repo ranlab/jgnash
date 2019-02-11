@@ -52,14 +52,13 @@ import java.util.stream.Collectors;
  */
 public abstract class AbstractSumByTypeReport extends Report {
 
-    private boolean runningTotal = true;
+    boolean runningTotal = true;
 
-    private List<LocalDate> dates = Collections.emptyList();
+    protected List<LocalDate> dates = Collections.emptyList();
 
     protected abstract List<AccountGroup> getAccountGroups();
 
-
-    AbstractReportTableModel createReportModel(final LocalDate startDate, final LocalDate endDate,
+    ReportModel createReportModel(final LocalDate startDate, final LocalDate endDate,
                                                       final boolean hideZeroBalanceAccounts) {
 
         //logger.info(rb.getString("Message.CollectingReportData"));
@@ -155,9 +154,14 @@ public abstract class AbstractSumByTypeReport extends Report {
             accounts.forEach(this::addAccount);
         }
 
-        /*public void addRow(final Row<?> row) {
+        /**
+         * Supports manual addition of a report row
+         *
+         * @param row the Row to add
+         */
+        void addRow(final Row<?> row) {
             rowList.add(row);
-        }*/
+        }
 
         void addAccount(final Account account) {
             rowList.add(new AccountRow(account));
