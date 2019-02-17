@@ -29,6 +29,7 @@
 * Write and replace for bxds and xml files to protect against corruption if a crash occurs during a save.
 
 == Release 2.36.2
+* 02/17/2019 Fixed an issue preventing the old Swing UI from running with Java 11 (Swing).
 * 02/10/2019 Update to the latest Hibernate, Netty, and HikariCP dependencies
 * 02/10/2019 Prevent an exception when importing odd OFX files using an XML declaration. (GitHub Issue #72)
 * 02/10/2019 Update to the latest Hibernate, Netty, and HikariCP dependencies.  This improves compatibility with Java 9+.
