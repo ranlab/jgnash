@@ -145,6 +145,19 @@ public class ReportActions {
         reportPair.getStage().show();
     }
 
+    public static void displayProfitLossReport2() {
+        final FXMLUtils.Pair<ReportViewerDialogController> reportPair =
+                FXMLUtils.load(ReportViewerDialogController.class.getResource("ReportViewerDialog.fxml"),
+                        ResourceUtils.getString("Title.ProfitLoss"));
+
+        reportPair.getController().loadReportController("ProfitLossReport2.fxml");
+
+        // Preserve size and location
+        StageUtils.addBoundsListener(reportPair.getStage(), ProfitLossReportController2.class, MainView.getPrimaryStage());
+
+        reportPair.getStage().show();
+    }
+
     public static void displayBalanceSheetReport() {
         final FXMLUtils.Pair<JasperViewerDialogController> reportPair =
                 FXMLUtils.load(JasperViewerDialogController.class.getResource("JasperViewerDialog.fxml"),
