@@ -30,13 +30,14 @@ import jgnash.report.table.ColumnStyle;
 import jgnash.report.table.Row;
 import jgnash.resource.util.ResourceUtils;
 import jgnash.time.DateUtils;
+import jgnash.time.Period;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
@@ -54,29 +55,33 @@ public abstract class AbstractSumByTypeReport extends Report {
 
     boolean runningTotal = true;
 
-    protected List<LocalDate> dates = Collections.emptyList();
+    final ArrayList<LocalDate> startDates = new ArrayList<>();
+
+    final ArrayList<LocalDate> endDates = new ArrayList<>();
+
+    private final ArrayList<String> dateLabels = new ArrayList<>();
 
     protected abstract List<AccountGroup> getAccountGroups();
 
+    /**
+     * Returns the reporting period
+     *
+     * @return returns a Monthly period unless overridden
+     */
+    private Period getReportPeriod() {
+        return Period.MONTHLY;
+    }
+
     ReportModel createReportModel(final LocalDate startDate, final LocalDate endDate,
-                                                      final boolean hideZeroBalanceAccounts) {
+                                  final boolean hideZeroBalanceAccounts) {
 
         //logger.info(rb.getString("Message.CollectingReportData"));
 
         final Engine engine = EngineFactory.getEngine(EngineFactory.DEFAULT);
         Objects.requireNonNull(engine);
 
-        // generate the date information
-        if (runningTotal) {
-            dates = DateUtils.getLastDayOfTheMonths(startDate, endDate);
-        } else {
-            dates = DateUtils.getFirstDayOfTheMonths(startDate, endDate);
-            dates.set(0, startDate);
-
-            if (DateUtils.after(endDate, dates.get(dates.size() - 1))) {
-                dates.add(endDate);
-            }
-        }
+        // generate the required date and label arrays
+        updateResolution(startDate, endDate);
 
         final CurrencyNode baseCurrency = engine.getDefaultCurrency();
 
@@ -95,18 +100,15 @@ public abstract class AbstractSumByTypeReport extends Report {
                 boolean remove = true;
 
                 if (runningTotal) {
-                    for (LocalDate date : dates) {
+                    for (LocalDate date : startDates) {
                         if (account.getBalance(date).compareTo(BigDecimal.ZERO) != 0) {
                             remove = false;
                             break;
                         }
                     }
                 } else {
-                    for (int j = 0; j < dates.size() - 1; j++) {
-                        final LocalDate sDate = dates.get(j);
-                        final LocalDate eDate = dates.get(j+1).minusDays(1);
-
-                        if (account.getBalance(sDate, eDate).compareTo(BigDecimal.ZERO) != 0) {
+                    for (int j = 0; j < startDates.size(); j++) {
+                        if (account.getBalance(startDates.get(j), endDates.get(j)).compareTo(BigDecimal.ZERO) != 0) {
                             remove = false;
                             break;
                         }
@@ -124,7 +126,71 @@ public abstract class AbstractSumByTypeReport extends Report {
         return model;
     }
 
-    private static List<Account> getAccountList(final Set<AccountType> types) {
+    private void updateResolution(final LocalDate startDate, final LocalDate endDate) {
+
+        final DateTimeFormatter dateFormat = DateUtils.getShortDateFormatter();
+
+        //System.out.println(startDate.toString() + ", " + endDate.toString());
+
+        startDates.clear();
+        endDates.clear();
+        dateLabels.clear();
+
+        LocalDate start = startDate;
+        LocalDate end = startDate;
+
+        switch (getReportPeriod()) {
+            case YEARLY:
+                while (end.isBefore(endDate)) {
+                    startDates.add(start);
+                    end = end.with(TemporalAdjusters.lastDayOfYear());
+                    endDates.add(end);
+                    dateLabels.add(String.valueOf(start.getYear()));
+                    start = end.plusDays(1);
+                }
+                break;
+            case QUARTERLY:
+                int i = DateUtils.getQuarterNumber(start) - 1;
+                while (end.isBefore(endDate)) {
+                    startDates.add(start);
+                    end = DateUtils.getLastDayOfTheQuarter(start);
+                    endDates.add(end);
+                    dateLabels.add(start.getYear() + "-Q" + (1 + i++ % 4));
+                    start = end.plusDays(1);
+                }
+                break;
+            case MONTHLY:   // default is monthly
+            default:
+                endDates.addAll(DateUtils.getLastDayOfTheMonths(startDate, endDate));
+                startDates.addAll(DateUtils.getFirstDayOfTheMonths(startDate, endDate));
+
+                startDates.set(0, startDate);   // force the start date
+
+                if (runningTotal) {
+                    for (final LocalDate date : endDates) {
+                        dateLabels.add(dateFormat.format(date));
+                    }
+                } else {
+                    for (int j = 0; j < startDates.size(); j++) {
+                        dateLabels.add(dateFormat.format(startDates.get(j)) + " - " + dateFormat.format(endDates.get(j)));
+                    }
+                }
+
+                //System.out.println("startDates: " + startDates.size());
+                //System.out.println("endDates: " + endDates.size());
+
+                break;
+        }
+
+        assert startDates.size() == endDates.size() && startDates.size() == dateLabels.size();
+
+        // adjust label for global end date
+        if (endDates.get(startDates.size() - 1).compareTo(endDate) > 0) {
+            endDates.set(endDates.size() - 1, endDate);
+        }
+    }
+
+    static List<Account> getAccountList(final Set<AccountType> types) {
         final Engine engine = EngineFactory.getEngine(EngineFactory.DEFAULT);
         Objects.requireNonNull(engine);
 
@@ -141,8 +207,6 @@ public abstract class AbstractSumByTypeReport extends Report {
         private final List<Row<?>> rowList = new ArrayList<>();
 
         private final CurrencyNode baseCurrency;
-
-        private final DateTimeFormatter dateFormat = DateUtils.getShortDateFormatter();
 
         private final ResourceBundle rb = ResourceUtils.getBundle();
 
@@ -174,11 +238,7 @@ public abstract class AbstractSumByTypeReport extends Report {
 
         @Override
         public int getColumnCount() {
-            if (runningTotal) {
-                return dates.size() + 2;
-            }
-
-            return dates.size() - 1 + 2;
+            return startDates.size() + 2;
         }
 
         @Override
@@ -212,14 +272,7 @@ public abstract class AbstractSumByTypeReport extends Report {
                 return "Type";
             }
 
-            if (runningTotal) {
-                return dateFormat.format(dates.get(columnIndex - 1));
-            }
-
-            LocalDate startDate = dates.get(columnIndex - 1);
-            LocalDate endDate = dates.get(columnIndex).minusDays(1);
-
-            return dateFormat.format(startDate) + " - " + dateFormat.format(endDate);
+            return dateLabels.get(columnIndex - 1);
         }
 
         @Override
@@ -255,15 +308,13 @@ public abstract class AbstractSumByTypeReport extends Report {
                     return getValue().getName();
                 } else if (columnIndex == getColumnCount() - 1) { // group column
                     return getValue().getAccountType().getAccountGroup().toString();
-                } else if (columnIndex > 0 && columnIndex <= dates.size()) {
+                } else if (columnIndex > 0 && columnIndex <= startDates.size()) {
                     if (runningTotal) {
-                        return getValue().getBalance(dates.get(columnIndex - 1), getCurrency());
+                        return getValue().getBalance(endDates.get(columnIndex - 1), getCurrency());
                     }
 
-                    final LocalDate startDate = dates.get(columnIndex - 1);
-                    final LocalDate endDate = dates.get(columnIndex).minusDays(1);
-
-                    return getValue().getBalance(startDate, endDate, getCurrency()).negate();
+                    return getValue().getBalance(startDates.get(columnIndex - 1), endDates.get(columnIndex - 1),
+                            getCurrency()).negate();
                 }
 
                 return null;

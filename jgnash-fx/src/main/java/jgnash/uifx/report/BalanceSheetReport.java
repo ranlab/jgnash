@@ -95,22 +95,15 @@ public class BalanceSheetReport extends AbstractSumByTypeReport {
                 return rb.getString("Title.RetainedEarnings");
             } else if (columnIndex == getColumnCount() - 1) { // group column
                 return AccountGroup.EQUITY.toString();
-            } else if (columnIndex > 0 && columnIndex <= dates.size()) {
-                final LocalDate startDate = dates.get(columnIndex - 1);
-                final LocalDate endDate = dates.get(columnIndex).minusDays(1);
-
-                return getRetainedProfitLoss(startDate, endDate);
+            } else if (columnIndex > 0 && columnIndex <= startDates.size()) {
+                return getRetainedProfitLoss(startDates.get(columnIndex - 1), endDates.get(columnIndex - 1));
             }
 
             return null;
         }
 
         private int getColumnCount() {
-            if (runningTotal) {
-                return dates.size() + 2;
-            }
-
-            return dates.size() - 1 + 2;
+            return startDates.size() + 2;
         }
 
         /**
