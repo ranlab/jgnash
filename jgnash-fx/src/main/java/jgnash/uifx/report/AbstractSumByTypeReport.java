@@ -35,7 +35,6 @@ import jgnash.time.Period;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
@@ -53,7 +52,7 @@ import java.util.stream.Collectors;
  */
 public abstract class AbstractSumByTypeReport extends Report {
 
-    boolean runningTotal = true;
+    private boolean runningTotal = true;
 
     final ArrayList<LocalDate> startDates = new ArrayList<>();
 
@@ -68,7 +67,7 @@ public abstract class AbstractSumByTypeReport extends Report {
      *
      * @return returns a Monthly period unless overridden
      */
-    private Period getReportPeriod() {
+    Period getReportPeriod() {
         return Period.MONTHLY;
     }
 
@@ -141,9 +140,9 @@ public abstract class AbstractSumByTypeReport extends Report {
 
         switch (getReportPeriod()) {
             case YEARLY:
-                while (end.isBefore(endDate)) {
+                while (start.isBefore(endDate)) {
                     startDates.add(start);
-                    end = end.with(TemporalAdjusters.lastDayOfYear());
+                    end = DateUtils.getLastDayOfTheYear(start);
                     endDates.add(end);
                     dateLabels.add(String.valueOf(start.getYear()));
                     start = end.plusDays(1);
@@ -190,7 +189,7 @@ public abstract class AbstractSumByTypeReport extends Report {
         }
     }
 
-    static List<Account> getAccountList(final Set<AccountType> types) {
+    private static List<Account> getAccountList(final Set<AccountType> types) {
         final Engine engine = EngineFactory.getEngine(EngineFactory.DEFAULT);
         Objects.requireNonNull(engine);
 

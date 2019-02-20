@@ -18,15 +18,32 @@
 package jgnash.uifx.report;
 
 import jgnash.engine.AccountGroup;
+import jgnash.time.Period;
 
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Profit and Loss Report
+ *
+ * @author Craig Cavanaugh
+ */
 public class ProfitLossReport extends AbstractSumByTypeReport {
+
+    private Period reportPeriod = Period.MONTHLY;
 
     ProfitLossReport() {
         setRunningTotal(false);
         setForceGroupPagination(false);
+    }
+
+    @Override
+    Period getReportPeriod() {
+        return reportPeriod;
+    }
+
+    void setReportPeriod(final Period reportPeriod) {
+        this.reportPeriod = reportPeriod;
     }
 
     @Override
