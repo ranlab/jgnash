@@ -20,6 +20,7 @@ package jgnash.uifx.report;
 import jgnash.engine.Account;
 import jgnash.engine.AccountGroup;
 import jgnash.engine.AccountType;
+import jgnash.engine.Comparators;
 import jgnash.engine.CurrencyNode;
 import jgnash.engine.Engine;
 import jgnash.engine.EngineFactory;
@@ -28,9 +29,11 @@ import jgnash.report.table.AbstractReportTableModel;
 import jgnash.report.table.ColumnHeaderStyle;
 import jgnash.report.table.ColumnStyle;
 import jgnash.report.table.Row;
+import jgnash.report.table.SortOrder;
 import jgnash.resource.util.ResourceUtils;
 import jgnash.time.DateUtils;
 import jgnash.time.Period;
+import jgnash.util.NotNull;
 
 import java.math.BigDecimal;
 import java.text.MessageFormat;
@@ -69,6 +72,8 @@ public abstract class AbstractSumByTypeReport extends Report {
 
     private boolean showFullAccountPath = false;
 
+    private SortOrder sortOrder = SortOrder.BY_NAME;
+
     /**
      * Returns the reporting period
      *
@@ -76,6 +81,10 @@ public abstract class AbstractSumByTypeReport extends Report {
      */
     Period getReportPeriod() {
         return Period.MONTHLY;
+    }
+
+    void setSortOrder(@NotNull final SortOrder sortOrder) {
+        this.sortOrder = sortOrder;
     }
 
     ReportModel createReportModel(final LocalDate startDate, final LocalDate endDate,
@@ -93,6 +102,17 @@ public abstract class AbstractSumByTypeReport extends Report {
 
         for (AccountGroup group : getAccountGroups()) {
             accounts.addAll(getAccountList(AccountType.getAccountTypes(group)));
+        }
+
+        switch (sortOrder) {
+            case BY_NAME:
+                accounts.sort(showFullAccountPath ? Comparators.getAccountByPathName() : Comparators.getAccountByName());
+                break;
+            case BY_BALANCE:
+                accounts.sort(Comparators.getAccountByBalance(startDate, endDate, baseCurrency, true));
+                break;
+            default:
+                accounts.sort(Comparators.getAccountByName());
         }
 
         // remove any account that will report a zero balance for all periods

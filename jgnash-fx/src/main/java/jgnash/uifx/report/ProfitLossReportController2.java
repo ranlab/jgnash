@@ -19,6 +19,7 @@ package jgnash.uifx.report;
 
 import jgnash.report.pdf.Report;
 import jgnash.report.table.AbstractReportTableModel;
+import jgnash.report.table.SortOrder;
 import jgnash.resource.util.ResourceUtils;
 import jgnash.time.DateUtils;
 import jgnash.time.Period;
@@ -31,6 +32,7 @@ import java.time.LocalDate;
 import java.util.function.Consumer;
 import java.util.prefs.Preferences;
 
+import javafx.beans.value.ChangeListener;
 import javafx.fxml.FXML;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
@@ -46,7 +48,7 @@ public class ProfitLossReportController2 implements ReportController {
     public ComboBox<Period> resolutionComboBox;
 
     @FXML
-    public ComboBox sortOrderComboBox;
+    public ComboBox<SortOrder> sortOrderComboBox;
 
     @FXML
     public CheckBox showLongNamesCheckBox;
@@ -68,6 +70,8 @@ public class ProfitLossReportController2 implements ReportController {
 
     private static final String SHOW_FULL_ACCOUNT_PATH = "showFullAccountPath";
 
+    private static final String SORT_ORDER = "sortOrder";
+
     private ProfitLossReport report = new ProfitLossReport();
 
     private Runnable refreshRunnable = null;
@@ -85,30 +89,26 @@ public class ProfitLossReportController2 implements ReportController {
         final Preferences preferences = getPreferences();
 
         hideZeroBalanceAccounts.setSelected(preferences.getBoolean(HIDE_ZERO_BALANCE, true));
-
         startDatePicker.setValue(LocalDate.now().minusMonths(preferences.getInt(MONTHS, 4) - 1));
 
-        startDatePicker.valueProperty().addListener((observable, oldValue, newValue) -> handleReportRefresh());
-
-        endDatePicker.valueProperty().addListener((observable, oldValue, newValue) -> handleReportRefresh());
-
-        hideZeroBalanceAccounts.onActionProperty().setValue(event -> handleReportRefresh());
-
         showLongNamesCheckBox.setSelected(preferences.getBoolean(SHOW_FULL_ACCOUNT_PATH, false));
-
-        final Period lastPeriod = Period.values()[preferences.getInt(PERIOD, Period.QUARTERLY.ordinal())];
 
         resolutionComboBox.getItems().add(Period.MONTHLY);
         resolutionComboBox.getItems().add(Period.QUARTERLY);
         resolutionComboBox.getItems().add(Period.YEARLY);
+        resolutionComboBox.setValue(Period.values()[preferences.getInt(PERIOD, Period.QUARTERLY.ordinal())]);
 
-        resolutionComboBox.setValue(lastPeriod);
+        sortOrderComboBox.getItems().setAll(SortOrder.values());
+        sortOrderComboBox.setValue(SortOrder.values()[preferences.getInt(SORT_ORDER, SortOrder.BY_NAME.ordinal())]);
 
-        resolutionComboBox.valueProperty().addListener((observable, oldValue, newValue) ->
-                JavaFXUtils.runLater(ProfitLossReportController2.this::refreshReport));
+        // change listener is assigned after controls have been set to prevent multiple report refreshes
+        final ChangeListener<Object> changeListener = (observable, oldValue, newValue) -> handleReportRefresh();
 
-        showLongNamesCheckBox.selectedProperty().addListener((observable, oldValue, newValue) ->
-                JavaFXUtils.runLater(ProfitLossReportController2.this::refreshReport));
+        startDatePicker.valueProperty().addListener(changeListener);
+        endDatePicker.valueProperty().addListener(changeListener);
+        showLongNamesCheckBox.selectedProperty().addListener(changeListener);
+        resolutionComboBox.valueProperty().addListener(changeListener);
+        hideZeroBalanceAccounts.selectedProperty().addListener(changeListener);
 
         // boot the report generation
         JavaFXUtils.runLater(this::refreshReport);
@@ -139,6 +139,7 @@ public class ProfitLossReportController2 implements ReportController {
                 endDatePicker.getValue()).size());
         preferences.putInt(PERIOD, resolutionComboBox.getValue().ordinal());
         preferences.putBoolean(SHOW_FULL_ACCOUNT_PATH, showLongNamesCheckBox.isSelected());
+        preferences.putInt(SORT_ORDER, sortOrderComboBox.getValue().ordinal());
 
         addTable();
 
@@ -163,6 +164,7 @@ public class ProfitLossReportController2 implements ReportController {
     }
 
     private AbstractReportTableModel createReportModel() {
+        report.setSortOrder(sortOrderComboBox.getValue());
         report.setReportPeriod(resolutionComboBox.getValue());
         report.setShowFullAccountPath(showLongNamesCheckBox.isSelected());
 
