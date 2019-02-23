@@ -426,7 +426,18 @@ public abstract class Report implements AutoCloseable {
 
         for (int i = 0; i < reportModel.getColumnCount(); i++) {
             if (reportModel.isColumnVisible(i)) {
-                drawText(contentStream, xPos, yPos, reportModel.getColumnName(i));
+                float shift = 0;
+                float availWidth = columnWidths[i] - getCellPadding() * 2;
+
+                final String text = truncateText(reportModel.getColumnName(i), availWidth,
+                        getHeaderFont(), getBaseFontSize());
+
+                if (rightAlign(i, reportModel)) {
+                    shift = availWidth - getStringWidth(text, getHeaderFont(), getBaseFontSize());
+                }
+
+                drawText(contentStream, xPos + shift, yPos, text);
+
                 xPos += columnWidths[i];
             }
         }
@@ -841,7 +852,7 @@ public abstract class Report implements AutoCloseable {
     }
 
     private static float getStringWidth(final String text, final PDFont font, final float fontSize) throws IOException {
-        return font.getStringWidth(text) / 1000 * fontSize;
+        return font.getStringWidth(text) / 1000f * fontSize;
     }
 
     public String getEllipsis() {
