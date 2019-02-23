@@ -67,6 +67,8 @@ public abstract class AbstractSumByTypeReport extends Report {
 
     private String subTitle = "";
 
+    private boolean showFullAccountPath = false;
+
     /**
      * Returns the reporting period
      *
@@ -212,6 +214,14 @@ public abstract class AbstractSumByTypeReport extends Report {
         this.addCrossTabColumn = addCrossTabColumn;
     }
 
+    private boolean isShowFullAccountPath() {
+        return showFullAccountPath;
+    }
+
+    void setShowFullAccountPath(boolean showFullAccountPath) {
+        this.showFullAccountPath = showFullAccountPath;
+    }
+
     protected class ReportModel extends AbstractReportTableModel {
 
         private final List<Row<?>> rowList = new ArrayList<>();
@@ -331,7 +341,7 @@ public abstract class AbstractSumByTypeReport extends Report {
                 }
 
                 if (columnIndex == 0) { // account column
-                    return getValue().getName();
+                    return isShowFullAccountPath() ? getValue().getPathName() : getValue().getName();
                 } else if (columnIndex == getColumnCount() - 1) { // group column
                     return getValue().getAccountType().getAccountGroup().toString();
                 } else if (columnIndex > 0 && columnIndex <= startDates.size()) {

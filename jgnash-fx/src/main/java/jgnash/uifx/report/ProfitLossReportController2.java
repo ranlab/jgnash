@@ -66,6 +66,8 @@ public class ProfitLossReportController2 implements ReportController {
 
     private static final String MONTHS = "months";
 
+    private static final String SHOW_FULL_ACCOUNT_PATH = "showFullAccountPath";
+
     private ProfitLossReport report = new ProfitLossReport();
 
     private Runnable refreshRunnable = null;
@@ -92,6 +94,8 @@ public class ProfitLossReportController2 implements ReportController {
 
         hideZeroBalanceAccounts.onActionProperty().setValue(event -> handleReportRefresh());
 
+        showLongNamesCheckBox.setSelected(preferences.getBoolean(SHOW_FULL_ACCOUNT_PATH, false));
+
         final Period lastPeriod = Period.values()[preferences.getInt(PERIOD, Period.QUARTERLY.ordinal())];
 
         resolutionComboBox.getItems().add(Period.MONTHLY);
@@ -101,6 +105,9 @@ public class ProfitLossReportController2 implements ReportController {
         resolutionComboBox.setValue(lastPeriod);
 
         resolutionComboBox.valueProperty().addListener((observable, oldValue, newValue) ->
+                JavaFXUtils.runLater(ProfitLossReportController2.this::refreshReport));
+
+        showLongNamesCheckBox.selectedProperty().addListener((observable, oldValue, newValue) ->
                 JavaFXUtils.runLater(ProfitLossReportController2.this::refreshReport));
 
         // boot the report generation
@@ -131,6 +138,7 @@ public class ProfitLossReportController2 implements ReportController {
         preferences.putInt(MONTHS, DateUtils.getLastDayOfTheMonths(startDatePicker.getValue(),
                 endDatePicker.getValue()).size());
         preferences.putInt(PERIOD, resolutionComboBox.getValue().ordinal());
+        preferences.putBoolean(SHOW_FULL_ACCOUNT_PATH, showLongNamesCheckBox.isSelected());
 
         addTable();
 
@@ -156,6 +164,7 @@ public class ProfitLossReportController2 implements ReportController {
 
     private AbstractReportTableModel createReportModel() {
         report.setReportPeriod(resolutionComboBox.getValue());
+        report.setShowFullAccountPath(showLongNamesCheckBox.isSelected());
 
         return report.createReportModel(startDatePicker.getValue(), endDatePicker.getValue(),
                 hideZeroBalanceAccounts.isSelected());
