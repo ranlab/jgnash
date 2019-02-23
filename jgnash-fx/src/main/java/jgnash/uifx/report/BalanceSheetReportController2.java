@@ -121,7 +121,7 @@ public class BalanceSheetReportController2 implements ReportController {
         report.clearReport();
 
         try {
-            report.addTable(model, ResourceUtils.getString("Title.BalanceSheet"), endDatePicker.getValue().toString());
+            report.addTable(model, ResourceUtils.getString("Title.BalanceSheet"));
             report.addFooter();
         } catch (final IOException e) {
             e.printStackTrace();

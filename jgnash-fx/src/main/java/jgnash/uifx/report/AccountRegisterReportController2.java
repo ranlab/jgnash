@@ -157,7 +157,7 @@ public class AccountRegisterReportController2 implements ReportController {
         report.clearReport();
 
         try {
-            report.addTable(model, accountComboBox.getValue().getName(), endDatePicker.getValue().toString());
+            report.addTable(model, accountComboBox.getValue().getName());
             report.addFooter();
         } catch (final IOException e) {
             e.printStackTrace();

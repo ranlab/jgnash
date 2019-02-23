@@ -34,6 +34,7 @@ public class ProfitLossReport extends AbstractSumByTypeReport {
 
     ProfitLossReport() {
         setRunningTotal(false);
+        setAddCrossTabColumn(true);
         setForceGroupPagination(false);
     }
 

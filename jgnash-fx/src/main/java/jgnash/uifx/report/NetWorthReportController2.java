@@ -121,7 +121,7 @@ public class NetWorthReportController2 implements ReportController {
         report.clearReport();
 
         try {
-            report.addTable(model, ResourceUtils.getString("Word.NetWorth"), endDatePicker.getValue().toString());
+            report.addTable(model, ResourceUtils.getString("Word.NetWorth"));
             report.addFooter();
         } catch (final IOException e) {
             e.printStackTrace();

@@ -33,6 +33,7 @@ import jgnash.time.DateUtils;
 import jgnash.time.Period;
 
 import java.math.BigDecimal;
+import java.text.MessageFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -62,6 +63,10 @@ public abstract class AbstractSumByTypeReport extends Report {
 
     protected abstract List<AccountGroup> getAccountGroups();
 
+    private boolean addCrossTabColumn = false;
+
+    private String subTitle = "";
+
     /**
      * Returns the reporting period
      *
@@ -73,8 +78,6 @@ public abstract class AbstractSumByTypeReport extends Report {
 
     ReportModel createReportModel(final LocalDate startDate, final LocalDate endDate,
                                   final boolean hideZeroBalanceAccounts) {
-
-        //logger.info(rb.getString("Message.CollectingReportData"));
 
         final Engine engine = EngineFactory.getEngine(EngineFactory.DEFAULT);
         Objects.requireNonNull(engine);
@@ -125,11 +128,18 @@ public abstract class AbstractSumByTypeReport extends Report {
         return model;
     }
 
+    @Override
+    public String getSubTitle() {
+        return subTitle;
+    }
+
     private void updateResolution(final LocalDate startDate, final LocalDate endDate) {
 
         final DateTimeFormatter dateFormat = DateUtils.getShortDateFormatter();
+        final MessageFormat format = new MessageFormat(rb.getString("Pattern.DateRange"));
 
-        //System.out.println(startDate.toString() + ", " + endDate.toString());
+        // update the subtitle
+        subTitle = format.format(new Object[]{DateUtils.asDate(startDate), DateUtils.asDate(endDate)});
 
         startDates.clear();
         endDates.clear();
@@ -175,9 +185,6 @@ public abstract class AbstractSumByTypeReport extends Report {
                     }
                 }
 
-                //System.out.println("startDates: " + startDates.size());
-                //System.out.println("endDates: " + endDates.size());
-
                 break;
         }
 
@@ -199,6 +206,10 @@ public abstract class AbstractSumByTypeReport extends Report {
 
     void setRunningTotal(final boolean runningTotal) {
         this.runningTotal = runningTotal;
+    }
+
+    void setAddCrossTabColumn(final boolean addCrossTabColumn) {
+        this.addCrossTabColumn = addCrossTabColumn;
     }
 
     protected class ReportModel extends AbstractReportTableModel {
@@ -237,7 +248,7 @@ public abstract class AbstractSumByTypeReport extends Report {
 
         @Override
         public int getColumnCount() {
-            return startDates.size() + 2;
+            return startDates.size() + 2 + (addCrossTabColumn ? 1 : 0);
         }
 
         @Override
@@ -265,9 +276,15 @@ public abstract class AbstractSumByTypeReport extends Report {
 
         @Override
         public String getColumnName(final int columnIndex) {
+
+            //cross tabulation column
+            if (addCrossTabColumn && columnIndex == getColumnCount() - 2) {
+                return "";
+            }
+
             if (columnIndex == 0) {
                 return rb.getString("Column.Account");
-            } else if (columnIndex == getColumnCount() - 1) {
+            } else if (columnIndex == getColumnCount() - 1) {   // type / group
                 return "Type";
             }
 
@@ -302,6 +319,16 @@ public abstract class AbstractSumByTypeReport extends Report {
 
             @Override
             public Object getValueAt(final int columnIndex) {
+
+                // check for cross tabulation column and do the math
+                if (addCrossTabColumn && columnIndex == getColumnCount() - 2) {
+                    BigDecimal sum = BigDecimal.ZERO;
+
+                    for (int i = 1; i < getColumnCount() - 2; i++) {
+                        sum = sum.add((BigDecimal) getValueAt(i));
+                    }
+                    return sum;
+                }
 
                 if (columnIndex == 0) { // account column
                     return getValue().getName();

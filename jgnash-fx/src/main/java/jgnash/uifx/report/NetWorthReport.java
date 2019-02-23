@@ -31,6 +31,7 @@ public class NetWorthReport extends AbstractSumByTypeReport {
 
     NetWorthReport() {
         setRunningTotal(true);
+        setAddCrossTabColumn(false);
         setForceGroupPagination(false);
     }
 

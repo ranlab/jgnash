@@ -147,7 +147,7 @@ public class ProfitLossReportController2 implements ReportController {
 
 
         try {
-            report.addTable(model, ResourceUtils.getString("Title.ProfitLoss"), endDatePicker.getValue().toString());
+            report.addTable(model, ResourceUtils.getString("Title.ProfitLoss"));
             report.addFooter();
         } catch (final IOException e) {
             e.printStackTrace();

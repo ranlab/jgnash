@@ -44,7 +44,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ResourceBundle;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -114,7 +113,7 @@ class PDFBoxTableTest {
             assertEquals(1, Report.getGroups(new BasicTestReport()).size());
             assertEquals(80, ((Report.GroupInfo) Report.getGroups(new BasicTestReport()).toArray()[0]).rows);
 
-            report.addTable(new BasicTestReport(), "Test Report", DateTimeFormatter.ISO_DATE.format(LocalDate.now()));
+            report.addTable(new BasicTestReport(), "Test Report");
             report.addFooter();
 
             report.saveToFile(tempPath);
@@ -171,7 +170,7 @@ class PDFBoxTableTest {
             assertEquals(2, Report.getGroups(new CrossTabTestReport()).size());
             assertEquals(40, ((Report.GroupInfo) Report.getGroups(new CrossTabTestReport()).toArray()[0]).rows);
 
-            report.addTable(new CrossTabTestReport(), "Test Report", DateTimeFormatter.ISO_DATE.format(LocalDate.now()));
+            report.addTable(new CrossTabTestReport(), "Test Report");
             report.addFooter();
 
             report.saveToFile(tempPath);

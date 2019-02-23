@@ -40,6 +40,7 @@ public class BalanceSheetReport extends AbstractSumByTypeReport {
 
     BalanceSheetReport() {
         setRunningTotal(false);
+        setAddCrossTabColumn(false);
         setForceGroupPagination(false);
     }
 
