@@ -45,13 +45,16 @@ import javafx.scene.control.ComboBox;
 public class ProfitLossReportController2 implements ReportController {
 
     @FXML
-    public ComboBox<Period> resolutionComboBox;
+    private ComboBox<Period> resolutionComboBox;
 
     @FXML
-    public ComboBox<SortOrder> sortOrderComboBox;
+    private ComboBox<SortOrder> sortOrderComboBox;
 
     @FXML
-    public CheckBox showLongNamesCheckBox;
+    private CheckBox showLongNamesCheckBox;
+
+    @FXML
+    private CheckBox showAccountPercentages;
 
     @FXML
     private DatePickerEx startDatePicker;
@@ -69,6 +72,8 @@ public class ProfitLossReportController2 implements ReportController {
     private static final String MONTHS = "months";
 
     private static final String SHOW_FULL_ACCOUNT_PATH = "showFullAccountPath";
+
+    private static final String SHOW_PERCENTAGES = "showPercentages";
 
     private static final String SORT_ORDER = "sortOrder";
 
@@ -92,6 +97,7 @@ public class ProfitLossReportController2 implements ReportController {
         startDatePicker.setValue(LocalDate.now().minusMonths(preferences.getInt(MONTHS, 4) - 1));
 
         showLongNamesCheckBox.setSelected(preferences.getBoolean(SHOW_FULL_ACCOUNT_PATH, false));
+        showAccountPercentages.setSelected(preferences.getBoolean(SHOW_PERCENTAGES, false));
 
         resolutionComboBox.getItems().add(Period.MONTHLY);
         resolutionComboBox.getItems().add(Period.QUARTERLY);
@@ -106,9 +112,10 @@ public class ProfitLossReportController2 implements ReportController {
 
         startDatePicker.valueProperty().addListener(changeListener);
         endDatePicker.valueProperty().addListener(changeListener);
-        showLongNamesCheckBox.selectedProperty().addListener(changeListener);
         resolutionComboBox.valueProperty().addListener(changeListener);
         hideZeroBalanceAccounts.selectedProperty().addListener(changeListener);
+        showLongNamesCheckBox.selectedProperty().addListener(changeListener);
+        showAccountPercentages.selectedProperty().addListener(changeListener);
 
         // boot the report generation
         JavaFXUtils.runLater(this::refreshReport);
@@ -138,8 +145,9 @@ public class ProfitLossReportController2 implements ReportController {
         preferences.putInt(MONTHS, DateUtils.getLastDayOfTheMonths(startDatePicker.getValue(),
                 endDatePicker.getValue()).size());
         preferences.putInt(PERIOD, resolutionComboBox.getValue().ordinal());
-        preferences.putBoolean(SHOW_FULL_ACCOUNT_PATH, showLongNamesCheckBox.isSelected());
         preferences.putInt(SORT_ORDER, sortOrderComboBox.getValue().ordinal());
+        preferences.putBoolean(SHOW_FULL_ACCOUNT_PATH, showLongNamesCheckBox.isSelected());
+        preferences.getBoolean(SHOW_PERCENTAGES, showAccountPercentages.isSelected());
 
         addTable();
 
@@ -164,8 +172,11 @@ public class ProfitLossReportController2 implements ReportController {
     }
 
     private AbstractReportTableModel createReportModel() {
+        report.setAddPercentileColumn(showAccountPercentages.isSelected());
+
         report.setSortOrder(sortOrderComboBox.getValue());
         report.setReportPeriod(resolutionComboBox.getValue());
+
         report.setShowFullAccountPath(showLongNamesCheckBox.isSelected());
 
         return report.createReportModel(startDatePicker.getValue(), endDatePicker.getValue(),

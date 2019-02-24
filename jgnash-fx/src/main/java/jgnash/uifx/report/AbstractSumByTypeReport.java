@@ -24,6 +24,7 @@ import jgnash.engine.Comparators;
 import jgnash.engine.CurrencyNode;
 import jgnash.engine.Engine;
 import jgnash.engine.EngineFactory;
+import jgnash.engine.MathConstants;
 import jgnash.report.pdf.Report;
 import jgnash.report.table.AbstractReportTableModel;
 import jgnash.report.table.ColumnHeaderStyle;
@@ -41,18 +42,25 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * Abstract Report that groups and sums by {@code AccountGroup} and has a
- * line for a global sum.
+ * Abstract Report that groups and sums by {@code AccountGroup} and has a line for a global sum. and cross tabulates
+ * all rows.
  *
  * @author Craig Cavanaugh
+ * @author Michael Mueller
+ * @author David Robertson
+ * @author Aleksey Trufanov
+ * @author Vincent Frison
+ * @author Klemen Zagar
  */
 public abstract class AbstractSumByTypeReport extends Report {
 
@@ -64,15 +72,25 @@ public abstract class AbstractSumByTypeReport extends Report {
 
     private final ArrayList<String> dateLabels = new ArrayList<>();
 
-    protected abstract List<AccountGroup> getAccountGroups();
+    private final Map<Account, BigDecimal> percentileMap = new HashMap<>();
 
     private boolean addCrossTabColumn = false;
+
+    private boolean addPercentileColumn = false;
 
     private String subTitle = "";
 
     private boolean showFullAccountPath = false;
 
     private SortOrder sortOrder = SortOrder.BY_NAME;
+
+    /**
+     * Returns a list of AccountGroup that will be reported on
+     *
+     * @return List of AccountGroup
+     */
+    @NotNull
+    protected abstract List<AccountGroup> getAccountGroups();
 
     /**
      * Returns the reporting period
@@ -90,6 +108,8 @@ public abstract class AbstractSumByTypeReport extends Report {
     ReportModel createReportModel(final LocalDate startDate, final LocalDate endDate,
                                   final boolean hideZeroBalanceAccounts) {
 
+        percentileMap.clear();
+
         final Engine engine = EngineFactory.getEngine(EngineFactory.DEFAULT);
         Objects.requireNonNull(engine);
 
@@ -100,19 +120,8 @@ public abstract class AbstractSumByTypeReport extends Report {
 
         List<Account> accounts = new ArrayList<>();
 
-        for (AccountGroup group : getAccountGroups()) {
+        for (final AccountGroup group : getAccountGroups()) {
             accounts.addAll(getAccountList(AccountType.getAccountTypes(group)));
-        }
-
-        switch (sortOrder) {
-            case BY_NAME:
-                accounts.sort(showFullAccountPath ? Comparators.getAccountByPathName() : Comparators.getAccountByName());
-                break;
-            case BY_BALANCE:
-                accounts.sort(Comparators.getAccountByBalance(startDate, endDate, baseCurrency, true));
-                break;
-            default:
-                accounts.sort(Comparators.getAccountByName());
         }
 
         // remove any account that will report a zero balance for all periods
@@ -144,7 +153,41 @@ public abstract class AbstractSumByTypeReport extends Report {
             }
         }
 
-        ReportModel model = new ReportModel(baseCurrency);
+        switch (sortOrder) {    // sort the accounts
+            case BY_NAME:
+                accounts.sort(showFullAccountPath ? Comparators.getAccountByPathName() : Comparators.getAccountByName());
+                break;
+            case BY_BALANCE:
+                accounts.sort(Comparators.getAccountByBalance(startDate, endDate, baseCurrency, true));
+                break;
+            default:
+                accounts.sort(Comparators.getAccountByName());
+        }
+
+        // cross tabulate account percentages by group
+        if (addPercentileColumn) {
+            for (final AccountGroup group : getAccountGroups()) {
+
+                // sum the group
+                BigDecimal groupTotal = BigDecimal.ZERO;
+                for (final Account a : accounts) {
+                    if (a.getAccountType().getAccountGroup() == group) {
+                        groupTotal = groupTotal.add(a.getBalance(startDate, endDate, baseCurrency));
+                    }
+                }
+
+                // calculate the percentage
+                for (final Account a : accounts) {
+                    if (a.getAccountType().getAccountGroup() == group) {
+
+                        BigDecimal sum = a.getBalance(startDate, endDate, baseCurrency);
+                        percentileMap.put(a, sum.divide(groupTotal, MathConstants.mathContext));
+                    }
+                }
+            }
+        }
+
+        final ReportModel model = new ReportModel(baseCurrency);
         model.addAccounts(accounts);
 
         return model;
@@ -234,6 +277,10 @@ public abstract class AbstractSumByTypeReport extends Report {
         this.addCrossTabColumn = addCrossTabColumn;
     }
 
+    void setAddPercentileColumn(final boolean addPercentileColumn) {
+        this.addPercentileColumn = addPercentileColumn;
+    }
+
     private boolean isShowFullAccountPath() {
         return showFullAccountPath;
     }
@@ -276,9 +323,18 @@ public abstract class AbstractSumByTypeReport extends Report {
             return rowList.size();
         }
 
+        /**
+         * Returns the number of additional columns added by report options
+         *
+         * @return extra column count
+         */
+        private int getExtraColumnCount() {
+            return (addPercentileColumn ? 1 : 0) + (addCrossTabColumn ? 1 : 0);
+        }
+
         @Override
         public int getColumnCount() {
-            return startDates.size() + 2 + (addCrossTabColumn ? 1 : 0);
+            return startDates.size() + 2 + getExtraColumnCount();
         }
 
         @Override
@@ -307,9 +363,12 @@ public abstract class AbstractSumByTypeReport extends Report {
         @Override
         public String getColumnName(final int columnIndex) {
 
-            //cross tabulation column
-            if (addCrossTabColumn && columnIndex == getColumnCount() - 2) {
+            if (isCrossTabColumn(columnIndex)) {
                 return "";
+            }
+
+            if (isPercentileColumn(columnIndex)) {
+                return rb.getString("Column.Percentile");
             }
 
             if (columnIndex == 0) {
@@ -323,6 +382,11 @@ public abstract class AbstractSumByTypeReport extends Report {
 
         @Override
         public ColumnStyle getColumnStyle(final int columnIndex) {
+
+            if (isPercentileColumn(columnIndex)) {
+                return ColumnStyle.PERCENTAGE;
+            }
+
             if (columnIndex == 0) { // accounts column
                 return ColumnStyle.STRING;
             } else if (columnIndex == getColumnCount() - 1) { // group column
@@ -341,6 +405,23 @@ public abstract class AbstractSumByTypeReport extends Report {
             return ColumnHeaderStyle.RIGHT;
         }
 
+        private boolean isPercentileColumn(final int columnIndex) {
+            if (addPercentileColumn) {
+                return columnIndex == getColumnCount() - 2; // last column
+            }
+            return false;
+        }
+
+        private boolean isCrossTabColumn(final int columnIndex) {
+            if (addCrossTabColumn && addPercentileColumn) {
+                return columnIndex == getColumnCount() - 3; // 2nd to last column
+            } else if (addCrossTabColumn) {
+                return columnIndex == getColumnCount() - 2; // last column when percentages are not displayed
+            }
+
+            return false;
+        }
+
         private class AccountRow extends Row<Account> {
 
             AccountRow(final Account account) {
@@ -351,13 +432,17 @@ public abstract class AbstractSumByTypeReport extends Report {
             public Object getValueAt(final int columnIndex) {
 
                 // check for cross tabulation column and do the math
-                if (addCrossTabColumn && columnIndex == getColumnCount() - 2) {
+                if (isCrossTabColumn(columnIndex)) {
                     BigDecimal sum = BigDecimal.ZERO;
 
-                    for (int i = 1; i < getColumnCount() - 2; i++) {
+                    for (int i = 1; i < getColumnCount() - 1 - getExtraColumnCount(); i++) {
                         sum = sum.add((BigDecimal) getValueAt(i));
                     }
                     return sum;
+                }
+
+                if (isPercentileColumn(columnIndex)) {
+                   return percentileMap.get(getValue());
                 }
 
                 if (columnIndex == 0) { // account column
