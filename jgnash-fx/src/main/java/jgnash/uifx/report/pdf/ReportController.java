@@ -20,6 +20,7 @@ package jgnash.uifx.report.pdf;
 import jgnash.report.pdf.Report;
 
 import java.util.function.Consumer;
+import java.util.prefs.Preferences;
 
 /**
  * Required interface for a report controller
@@ -47,4 +48,12 @@ public interface ReportController {
      */
     void refreshReport();
 
+    /**
+     * Returns the default Preference node for the implementing class
+     *
+     * @return Preference node
+     */
+    default Preferences getPreferences() {
+        return Preferences.userNodeForPackage(getClass()).node(getClass().getSimpleName());
+    }
 }

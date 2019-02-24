@@ -85,10 +85,6 @@ public class ProfitLossReportController2 implements ReportController {
         super();
     }
 
-    private Preferences getPreferences() {
-        return Preferences.userNodeForPackage(getClass()).node(getClass().getSimpleName());
-    }
-
     @FXML
     private void initialize() {
         final Preferences preferences = getPreferences();
