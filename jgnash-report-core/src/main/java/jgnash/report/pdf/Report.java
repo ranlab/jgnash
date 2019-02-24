@@ -97,7 +97,7 @@ public abstract class Report implements AutoCloseable {
 
     private PDFont footerFont;
 
-    private float cellPadding = 2.5f;
+    private float cellPadding = 3f; // cell padding in points
 
     final Color footerBackGround = Color.LIGHT_GRAY;
 
@@ -857,7 +857,7 @@ public abstract class Report implements AutoCloseable {
     }
 
     private static float getStringWidth(final String text, final PDFont font, final float fontSize) throws IOException {
-        return font.getStringWidth(text) / 1000f * fontSize;
+        return (float)Math.ceil(font.getStringWidth(text) / 1000f * fontSize);
     }
 
     public String getEllipsis() {
@@ -890,8 +890,8 @@ public abstract class Report implements AutoCloseable {
 
                 final String protoValue = reportModel.getColumnPrototypeValueAt(i);
 
-                float headerWidth = getStringWidth(reportModel.getColumnName(i), getHeaderFont(), getBaseFontSize()) + getCellPadding() * 2;
-                float cellTextWidth = getStringWidth(protoValue, getTableFont(), getBaseFontSize()) + getCellPadding() * 2;
+                float headerWidth = getStringWidth(reportModel.getColumnName(i), getHeaderFont(), getBaseFontSize()) + getCellPadding() * 2f;
+                float cellTextWidth = getStringWidth(protoValue, getTableFont(), getBaseFontSize()) + getCellPadding() * 2f;
 
                 widths[i] = Math.max(headerWidth, cellTextWidth);
 
