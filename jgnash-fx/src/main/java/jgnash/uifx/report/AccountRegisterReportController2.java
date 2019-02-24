@@ -32,6 +32,7 @@ import java.util.function.Consumer;
 import java.util.prefs.Preferences;
 
 import javafx.beans.value.ChangeListener;
+import javafx.beans.value.WeakChangeListener;
 import javafx.fxml.FXML;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.TextField;
@@ -90,14 +91,14 @@ public class AccountRegisterReportController2 implements ReportController {
             }
         });
 
-        final ChangeListener<Object> refreshListener = (observable, oldValue, newValue) -> handleReportRefresh();
+        final ChangeListener<Object> changeListener = (observable, oldValue, newValue) -> handleReportRefresh();
 
-        showSplitsCheckBox.selectedProperty().addListener(refreshListener);
-        startDatePicker.valueProperty().addListener(refreshListener);
-        endDatePicker.valueProperty().addListener(refreshListener);
-        payeeFilterTextField.textProperty().addListener(refreshListener);
-        memoFilterTextField.textProperty().addListener(refreshListener);
-        showTimestampCheckBox.selectedProperty().addListener(refreshListener);
+        showSplitsCheckBox.selectedProperty().addListener(new WeakChangeListener<>(changeListener));
+        startDatePicker.valueProperty().addListener(new WeakChangeListener<>(changeListener));
+        endDatePicker.valueProperty().addListener(new WeakChangeListener<>(changeListener));
+        payeeFilterTextField.textProperty().addListener(new WeakChangeListener<>(changeListener));
+        memoFilterTextField.textProperty().addListener(new WeakChangeListener<>(changeListener));
+        showTimestampCheckBox.selectedProperty().addListener(new WeakChangeListener<>(changeListener));
     }
 
     @Override

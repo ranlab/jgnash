@@ -33,6 +33,7 @@ import java.util.function.Consumer;
 import java.util.prefs.Preferences;
 
 import javafx.beans.value.ChangeListener;
+import javafx.beans.value.WeakChangeListener;
 import javafx.fxml.FXML;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
@@ -106,12 +107,12 @@ public class ProfitLossReportController2 implements ReportController {
         // change listener is assigned after controls have been set to prevent multiple report refreshes
         final ChangeListener<Object> changeListener = (observable, oldValue, newValue) -> handleReportRefresh();
 
-        startDatePicker.valueProperty().addListener(changeListener);
-        endDatePicker.valueProperty().addListener(changeListener);
-        resolutionComboBox.valueProperty().addListener(changeListener);
-        hideZeroBalanceAccounts.selectedProperty().addListener(changeListener);
-        showLongNamesCheckBox.selectedProperty().addListener(changeListener);
-        showAccountPercentages.selectedProperty().addListener(changeListener);
+        startDatePicker.valueProperty().addListener(new WeakChangeListener<>(changeListener));
+        endDatePicker.valueProperty().addListener(new WeakChangeListener<>(changeListener));
+        resolutionComboBox.valueProperty().addListener(new WeakChangeListener<>(changeListener));
+        hideZeroBalanceAccounts.selectedProperty().addListener(new WeakChangeListener<>(changeListener));
+        showLongNamesCheckBox.selectedProperty().addListener(new WeakChangeListener<>(changeListener));
+        showAccountPercentages.selectedProperty().addListener(new WeakChangeListener<>(changeListener));
 
         // boot the report generation
         JavaFXUtils.runLater(this::refreshReport);
