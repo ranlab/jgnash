@@ -323,6 +323,11 @@ public abstract class AbstractSumByTypeReport extends Report {
             return rowList.size();
         }
 
+        @Override
+        public boolean isColumnFixedWidth(final int columnIndex) {
+            return columnIndex != 0;    // fixed width if not the account column
+        }
+
         /**
          * Returns the number of additional columns added by report options
          *
