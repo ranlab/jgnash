@@ -132,6 +132,19 @@ public class ReportActions {
         reportPair.getStage().show();
     }
 
+    public static void displayPortfolioReport2() {
+        final FXMLUtils.Pair<ReportViewerDialogController> reportPair =
+                FXMLUtils.load(ReportViewerDialogController.class.getResource("ReportViewerDialog.fxml"),
+                        ResourceUtils.getString("Title.PortfolioReport"));
+
+        reportPair.getController().loadReportController("PortfolioReport2.fxml");
+
+        // Preserve size and location
+        StageUtils.addBoundsListener(reportPair.getStage(), PortfolioReportController2.class, MainView.getPrimaryStage());
+
+        reportPair.getStage().show();
+    }
+
     public static void displayProfitLossReport() {
         final FXMLUtils.Pair<JasperViewerDialogController> reportPair =
                 FXMLUtils.load(JasperViewerDialogController.class.getResource("JasperViewerDialog.fxml"),

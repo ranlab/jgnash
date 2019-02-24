@@ -101,6 +101,7 @@
             <MenuItem text="%Menu.ProfitLoss.Name" onAction="#handleDisplayProfitLossReport"/>
             <MenuItem text="Profit Loss 2" onAction="#handleDisplayProfitLossReport2"/>
             <MenuItem text="%Menu.Portfolio.Name" onAction="#handleDisplayPortfolioReport"/>
+            <MenuItem text="%Menu.Portfolio.Name" onAction="#handleDisplayPortfolioReport2"/>
         </Menu>
     </Menu>
 

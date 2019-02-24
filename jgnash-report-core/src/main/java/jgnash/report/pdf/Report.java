@@ -97,7 +97,7 @@ public abstract class Report implements AutoCloseable {
 
     private PDFont footerFont;
 
-    private float cellPadding = 3f; // cell padding in points
+    private float cellPadding = 2.5f; // cell padding in points
 
     final Color footerBackGround = Color.LIGHT_GRAY;
 
@@ -283,7 +283,7 @@ public abstract class Report implements AutoCloseable {
                 try (final PDPageContentStream contentStream = new PDPageContentStream(pdfDocument, page,
                         PDPageContentStream.AppendMode.APPEND, false)) {
 
-                    // add the table title its not been added
+                    // add the table title if its not been added
                     if (title != null && !title.isEmpty() && row == 0 && !titleWritten) {
                         docY = addReportTitle(contentStream, title, getSubTitle(), docY);
 
@@ -706,6 +706,9 @@ public abstract class Report implements AutoCloseable {
             case PERCENTAGE:
                 final NumberFormat percentageFormat = Formats.getPercentageFormat();
                 return percentageFormat.format(value);
+            case QUANTITY:
+                final NumberFormat qtyFormat = Formats.getQuantityFormat();
+                return qtyFormat.format(value);
             default:
                 return value.toString();
         }
@@ -721,6 +724,7 @@ public abstract class Report implements AutoCloseable {
             case BALANCE_WITH_SUM_AND_GLOBAL:
             case AMOUNT_SUM:
             case PERCENTAGE:
+            case QUANTITY:
                 return true;
             default:
                 return false;
