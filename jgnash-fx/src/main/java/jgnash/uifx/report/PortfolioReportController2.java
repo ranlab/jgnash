@@ -59,7 +59,7 @@ public class PortfolioReportController2 implements ReportController {
 
     private Runnable refreshRunnable = null;
 
-    private Report report = new PortfolioReport();
+    private final Report report = new PortfolioReport();
 
     @FXML
     private void initialize() {

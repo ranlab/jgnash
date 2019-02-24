@@ -21,7 +21,7 @@ import jgnash.report.pdf.Report;
 import jgnash.resource.util.ResourceUtils;
 import jgnash.uifx.StaticUIMethods;
 import jgnash.uifx.control.BusyPane;
-import jgnash.uifx.report.PortfolioReportController;
+import jgnash.uifx.report.ReportActions;
 import jgnash.uifx.util.InjectFXML;
 import jgnash.uifx.util.JavaFXUtils;
 import jgnash.uifx.views.main.MainView;
@@ -329,7 +329,7 @@ public class ReportViewerDialogController {
     public <T extends ReportController> T loadReportController(final String fxmlResource) {
         try {
             final FXMLLoader fxmlLoader =
-                    new FXMLLoader(PortfolioReportController.class.getResource(fxmlResource), resources);
+                    new FXMLLoader(ReportActions.class.getResource(fxmlResource), resources);
 
             reportControllerPaneProperty.setValue(fxmlLoader.load());
 

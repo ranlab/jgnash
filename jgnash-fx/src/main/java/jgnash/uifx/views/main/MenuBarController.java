@@ -444,11 +444,6 @@ public class MenuBarController implements MessageListener {
     }
 
     @FXML
-    private void handleDisplayPortfolioReport() {
-        ReportActions.displayPortfolioReport();
-    }
-
-    @FXML
     private void handleDisplayPortfolioReport2() {
         ReportActions.displayPortfolioReport2();
     }
@@ -459,18 +454,8 @@ public class MenuBarController implements MessageListener {
     }
 
     @FXML
-    private void handleDisplayAccountRegisterReport() {
-        ReportActions.displayAccountRegisterReport(null);
-    }
-
-    @FXML
     private void handleDisplayAccountRegisterReport2() {
         ReportActions.displayAccountRegisterReport2(null);
-    }
-
-    @FXML
-    private void handleDisplayProfitLossReport() {
-        ReportActions.displayProfitLossReport();
     }
 
     @FXML
@@ -479,18 +464,8 @@ public class MenuBarController implements MessageListener {
     }
 
     @FXML
-    private void handleDisplayBalanceSheetReport() {
-        ReportActions.displayBalanceSheetReport();
-    }
-
-    @FXML
     private void handleDisplayBalanceSheetReport2() {
         ReportActions.displayBalanceSheetReport2();
-    }
-
-    @FXML
-    private void handleDisplayNetWorthReport() {
-        ReportActions.displayNetWorthReport();
     }
 
     @FXML
