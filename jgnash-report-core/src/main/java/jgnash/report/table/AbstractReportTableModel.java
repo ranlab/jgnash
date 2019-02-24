@@ -236,6 +236,18 @@ public abstract class AbstractReportTableModel extends AbstractTableModel {
                 }
             }
 
+            if (isColumnGloballySummed(columnIndex)) {
+                BigDecimal globalSum = BigDecimal.ZERO;
+
+                for (final BigDecimal value : groupMap.values()) {
+                    globalSum = globalSum.add(value);
+                }
+
+                if (nf.format(globalSum).length() > longest.length()) { // look at group totals
+                    longest = nf.format(globalSum);
+                }
+            }
+
         } else if (getColumnStyle(columnIndex) == ColumnStyle.STRING) {
             for (int i = 0; i < getRowCount(); i++) {
                 final String val = (String) getValueAt(i, columnIndex);
