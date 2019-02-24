@@ -19,6 +19,7 @@ package jgnash.report.pdf;
 
 import jgnash.report.table.AbstractReportTableModel;
 import jgnash.report.table.ColumnStyle;
+import jgnash.report.table.Formats;
 import jgnash.report.ui.ReportPrintFactory;
 import jgnash.resource.util.ResourceUtils;
 import jgnash.text.CommodityFormat;
@@ -702,6 +703,9 @@ public abstract class Report implements AutoCloseable {
             case AMOUNT_SUM:
                 final NumberFormat numberFormat = CommodityFormat.getFullNumberFormat(reportModel.getCurrency());
                 return numberFormat.format(value);
+            case PERCENTAGE:
+                final NumberFormat percentageFormat = Formats.getPercentageFormat();
+                return percentageFormat.format(value);
             default:
                 return value.toString();
         }
@@ -716,6 +720,7 @@ public abstract class Report implements AutoCloseable {
             case BALANCE_WITH_SUM:
             case BALANCE_WITH_SUM_AND_GLOBAL:
             case AMOUNT_SUM:
+            case PERCENTAGE:
                 return true;
             default:
                 return false;
