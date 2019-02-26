@@ -95,7 +95,7 @@ public class FontRegistry {
     static String getRegisteredFontPath(final String name) {
         blockForFontRegistration();
 
-        return registeredFontMap.get(name.toLowerCase(Locale.ROOT));
+        return registeredFontMap.get(name);
     }
 
     private static void registerFonts() {
