@@ -237,11 +237,7 @@ public abstract class AbstractReportTableModel extends AbstractTableModel {
             }
 
             if (isColumnGloballySummed(columnIndex)) {
-                BigDecimal globalSum = BigDecimal.ZERO;
-
-                for (final BigDecimal value : groupMap.values()) {
-                    globalSum = globalSum.add(value);
-                }
+                final BigDecimal globalSum = getGlobalSum(columnIndex);
 
                 if (nf.format(globalSum).length() > longest.length()) { // look at group totals
                     longest = nf.format(globalSum);
