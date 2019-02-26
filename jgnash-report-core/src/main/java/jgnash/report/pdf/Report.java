@@ -120,14 +120,9 @@ public abstract class Report implements AutoCloseable {
     public Report() {
         this.pdfDocument = new PDDocument(MemoryUsageSetting.setupMixed(MAX_MEMORY_USAGE));
 
-
-        // TODO, load fonts from the registry
         setTableFont(loadFont(ReportFactory.getMonoFont(), pdfDocument));
-        setHeaderFont(loadFont(ReportFactory.getProportionalFont(), pdfDocument));
+        setHeaderFont(loadFont(ReportFactory.getHeaderFont(), pdfDocument));
         setFooterFont(loadFont(ReportFactory.getProportionalFont(), pdfDocument));
-
-        //setHeaderFont(PDType1Font.HELVETICA_BOLD);
-        //setFooterFont(PDType1Font.HELVETICA_OBLIQUE);
 
         // restore font size
         baseFontSize = getPreferences().getFloat(BASE_FONT_SIZE, DEFAULT_BASE_FONT_SIZE);
@@ -215,6 +210,9 @@ public abstract class Report implements AutoCloseable {
     }
 
     public void setHeaderFont(final PDFont headerFont) {
+
+        System.out.println(headerFont.getName());
+
         this.headerFont = headerFont;
     }
 

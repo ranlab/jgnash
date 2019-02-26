@@ -37,11 +37,19 @@ public class ReportFactory {
      */
     private final static String PROPORTIONAL = "proportional";
 
-    private final static String[] DEFAULT_MONO_FONTS = { "Courier New", "Andale Mono", "Bitstream Vera Sans Mono",
+    /**
+     * Preferences key for headers / footers / titles
+     */
+    private final static String HEADER = "header";
+
+    private final static String[] DEFAULT_MONO_FONTS = { "Courier New", "Andale Mono", "Noto Sans Mono Regular",
                     "Luxi Mono", "Liberation Mono", "Comic Sans MS" };
 
-    private final static String[] DEFAULT_PROPORTIONAL_FONTS = { "Times New Roman", "Bitstream Vera Serif", "Luxi Serif",
+    private final static String[] DEFAULT_PROPORTIONAL_FONTS = { "Times New Roman", "Noto Sans Mono Regular", "Luxi Serif",
                     "Liberation Serif" };
+
+    private final static String[] DEFAULT_HEADER_FONTS = { "Arial Bold", "Noto Sans Bold", "Luxi Serif",
+            "Liberation Serif" };
 
     private ReportFactory() {
     }
@@ -60,7 +68,6 @@ public class ReportFactory {
                 return knownFont; // it found it!
             }
         }
-
         return "Monospaced"; // fail safe
     }
 
@@ -82,9 +89,26 @@ public class ReportFactory {
     }
 
     /**
-     * Returns the name of the mono spaced report to use
+     * Returns a font name for a proportional, PDF embeddable report
+     *
+     * @return The font name for headers
+     */
+    private static String getDefaultHeaderFont() {
+
+        final List<String> fonts = FontRegistry.getFontList();
+
+        for (String knownFont : DEFAULT_HEADER_FONTS) {
+            if (fonts.contains(knownFont)) {
+                return knownFont; // it found it!
+            }
+        }
+        return "SansSerif"; // fail safe
+    }
+
+    /**
+     * Returns the name of the mono spaced font to use
      * 
-     * @return name of the mono spaced report to use
+     * @return name of the mono spaced font to use
      */
     public static String getMonoFont() {
         Preferences p = Preferences.userNodeForPackage(ReportFactory.class);
@@ -92,9 +116,9 @@ public class ReportFactory {
     }
 
     /**
-     * Returns the name of the proportional spaced report to use
+     * Returns the name of the proportional spaced font to use
      * 
-     * @return name of the proportional spaced report to use
+     * @return name of the proportional spaced font to use
      */
     public static String getProportionalFont() {
         Preferences p = Preferences.userNodeForPackage(ReportFactory.class);
@@ -102,7 +126,17 @@ public class ReportFactory {
     }
 
     /**
-     * Sets the name of the mono spaced report to use
+     * Returns the name of the proportional spaced font to use
+     *
+     * @return name of the proportional spaced font to use
+     */
+    public static String getHeaderFont() {
+        Preferences p = Preferences.userNodeForPackage(ReportFactory.class);
+        return p.get(HEADER, getDefaultHeaderFont());
+    }
+
+    /**
+     * Sets the name of the mono spaced font to use
      * 
      * @param font report name to use
      */
@@ -112,12 +146,22 @@ public class ReportFactory {
     }
 
     /**
-     * Sets the name of the proportional spaced report to use
+     * Sets the name of the proportional spaced font to use
      * 
-     * @param font report name to use
+     * @param font font name to use
      */
     public static void setProportionalFont(final String font) {
         Preferences p = Preferences.userNodeForPackage(ReportFactory.class);
         p.put(PROPORTIONAL, font);
+    }
+
+    /**
+     * Sets the name of the header font to use
+     *
+     * @param font font name to use
+     */
+    public static void setHeaderFont(final String font) {
+        Preferences p = Preferences.userNodeForPackage(ReportFactory.class);
+        p.put(HEADER, font);
     }
 }

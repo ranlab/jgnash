@@ -33,6 +33,8 @@ public class ProfitLossReport extends AbstractSumByTypeReport {
     private Period reportPeriod = Period.MONTHLY;
 
     ProfitLossReport() {
+        super();
+
         setRunningTotal(false);
         setAddCrossTabColumn(true);
         setForceGroupPagination(false);

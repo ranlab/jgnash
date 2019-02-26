@@ -30,6 +30,8 @@ import java.util.List;
 public class NetWorthReport extends AbstractSumByTypeReport {
 
     NetWorthReport() {
+        super();
+
         setRunningTotal(true);
         setAddCrossTabColumn(false);
         setForceGroupPagination(false);

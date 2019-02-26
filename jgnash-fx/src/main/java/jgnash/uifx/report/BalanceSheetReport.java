@@ -39,6 +39,8 @@ import java.util.Objects;
 public class BalanceSheetReport extends AbstractSumByTypeReport {
 
     BalanceSheetReport() {
+        super();
+
         setRunningTotal(false);
         setAddCrossTabColumn(false);
         setForceGroupPagination(false);

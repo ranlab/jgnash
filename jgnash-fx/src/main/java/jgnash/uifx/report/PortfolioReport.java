@@ -47,6 +47,8 @@ import java.util.logging.Logger;
 public class PortfolioReport extends Report {
 
     PortfolioReport() {
+        super();
+
         setForceGroupPagination(false);
     }
 

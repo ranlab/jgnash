@@ -31,6 +31,9 @@ import jgnash.report.pdf.ReportFactory;
 public class ReportTabController {
 
     @FXML
+    private ComboBox<String> headerFontComboBox;
+
+    @FXML
     private ComboBox<String> monoFontComboBox;
 
     @FXML
@@ -40,13 +43,17 @@ public class ReportTabController {
     private void initialize() {
         monoFontComboBox.getItems().setAll(FontRegistry.getFontList());
         proportionalFontComboBox.getItems().setAll(FontRegistry.getFontList());
+        headerFontComboBox.getItems().setAll(FontRegistry.getFontList());
 
         monoFontComboBox.setValue(ReportFactory.getMonoFont());
         proportionalFontComboBox.setValue(ReportFactory.getProportionalFont());
+        headerFontComboBox.setValue(ReportFactory.getHeaderFont());
 
         monoFontComboBox.setOnAction(event -> ReportFactory.setMonoFont(monoFontComboBox.getValue()));
 
         proportionalFontComboBox.setOnAction(event ->
                 ReportFactory.setProportionalFont(proportionalFontComboBox.getValue()));
+
+        headerFontComboBox.setOnAction(event -> ReportFactory.setHeaderFont(headerFontComboBox.getValue()));
     }
 }
