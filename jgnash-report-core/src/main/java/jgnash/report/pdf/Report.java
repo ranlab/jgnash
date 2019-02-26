@@ -27,14 +27,15 @@ import jgnash.time.DateUtils;
 import jgnash.util.NotNull;
 
 import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.pdfbox.io.MemoryUsageSetting;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDFont;
+import org.apache.pdfbox.pdmodel.font.PDType0Font;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.pdfbox.rendering.ImageType;
 import org.apache.pdfbox.rendering.PDFRenderer;
 
@@ -42,6 +43,7 @@ import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.awt.print.PageFormat;
 
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.file.Path;
@@ -52,6 +54,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.ResourceBundle;
@@ -71,8 +74,7 @@ import static jgnash.util.LogUtil.logSevere;
  * logic is from top down with use of a method to convert to PDF coordinate system.
  * <p>
  * This class is abstract to force isolation of Preferences through simple extension of the class
- *
- * // FIXME: The report tables are being created twice with an update
+ * <p>
  *
  * @author Craig Cavanaugh
  */
@@ -97,7 +99,7 @@ public abstract class Report implements AutoCloseable {
 
     private PDFont footerFont;
 
-    private float cellPadding = 2.5f; // cell padding in points
+    private float cellPadding = 3f; // cell padding in points
 
     final Color footerBackGround = Color.LIGHT_GRAY;
 
@@ -118,9 +120,14 @@ public abstract class Report implements AutoCloseable {
     public Report() {
         this.pdfDocument = new PDDocument(MemoryUsageSetting.setupMixed(MAX_MEMORY_USAGE));
 
-        setTableFont(PDType1Font.COURIER);
-        setHeaderFont(PDType1Font.HELVETICA_BOLD);
-        setFooterFont(PDType1Font.HELVETICA_OBLIQUE);
+
+        // TODO, load fonts from the registry
+        setTableFont(loadFont(ReportFactory.getMonoFont(), pdfDocument));
+        setHeaderFont(loadFont(ReportFactory.getProportionalFont(), pdfDocument));
+        setFooterFont(loadFont(ReportFactory.getProportionalFont(), pdfDocument));
+
+        //setHeaderFont(PDType1Font.HELVETICA_BOLD);
+        //setFooterFont(PDType1Font.HELVETICA_OBLIQUE);
 
         // restore font size
         baseFontSize = getPreferences().getFloat(BASE_FONT_SIZE, DEFAULT_BASE_FONT_SIZE);
@@ -133,6 +140,25 @@ public abstract class Report implements AutoCloseable {
         for (PDPage pdPage : pdfDocument.getPages()) {
             pdfDocument.removePage(pdPage);
         }
+    }
+
+    private PDFont loadFont(final String name, final PDDocument document) {
+
+        final String path = FontRegistry.getRegisteredFontPath(name);
+
+        if (path != null && !path.isEmpty()) {
+            try {
+                if (path.toLowerCase(Locale.ROOT).endsWith(".ttf") || path.toLowerCase(Locale.ROOT).endsWith(".otf")
+                        || path.toLowerCase(Locale.ROOT).indexOf(".ttc,") > 0) {
+                    return PDType0Font.load(document, new FileInputStream(path), false);
+                } else if (path.toLowerCase(Locale.ROOT).endsWith(".afm") || path.toLowerCase(Locale.ROOT).endsWith(".pfm")) {
+                    return new PDType1Font(document, new FileInputStream(path));
+                }
+            } catch (final Exception ignored) {
+            }
+        }
+
+        return PDType1Font.COURIER;
     }
 
     public PDDocument getPdfDocument() {
@@ -524,8 +550,8 @@ public abstract class Report implements AutoCloseable {
      * @return offset
      */
     private float getRowTextBaselineOffset() {
-        return getTableRowHeight()
-                - getTableFont().getFontDescriptor().getFontBoundingBox().getHeight() / 1000 * getBaseFontSize();
+        return (getTableRowHeight()
+                - getTableFont().getFontDescriptor().getCapHeight() / 1000 * getBaseFontSize()) / 2f;
     }
 
     /**
@@ -617,7 +643,7 @@ public abstract class Report implements AutoCloseable {
      * @throws IOException IO exception
      */
     private void addGlobalFooter(final AbstractReportTableModel reportModel, final PDPageContentStream contentStream,
-                                  float[] columnWidths, float yStart) throws IOException {
+                                 float[] columnWidths, float yStart) throws IOException {
 
         float yDoc = yStart + getTableRowHeight();
 
@@ -861,7 +887,7 @@ public abstract class Report implements AutoCloseable {
     }
 
     private static float getStringWidth(final String text, final PDFont font, final float fontSize) throws IOException {
-        return (float)Math.ceil(font.getStringWidth(text) / 1000f * fontSize);
+        return (float) Math.ceil(font.getStringWidth(text) / 1000f * fontSize);
     }
 
     public String getEllipsis() {
@@ -893,9 +919,10 @@ public abstract class Report implements AutoCloseable {
             if (reportModel.isColumnVisible(i)) {
 
                 final String protoValue = reportModel.getColumnPrototypeValueAt(i);
+                System.out.println(protoValue);
 
-                float headerWidth = getStringWidth(reportModel.getColumnName(i), getHeaderFont(), getBaseFontSize()) + getCellPadding() * 2f;
-                float cellTextWidth = getStringWidth(protoValue, getTableFont(), getBaseFontSize()) + getCellPadding() * 2f;
+                float headerWidth = getStringWidth(reportModel.getColumnName(i), getHeaderFont(), getBaseFontSize()) + getCellPadding() * 3f;
+                float cellTextWidth = getStringWidth(protoValue, getTableFont(), getBaseFontSize()) + getCellPadding() * 3f;
 
                 widths[i] = Math.max(headerWidth, cellTextWidth);
 

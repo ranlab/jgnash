@@ -19,8 +19,9 @@ package jgnash.uifx.dialog.options;
 
 import javafx.fxml.FXML;
 import javafx.scene.control.ComboBox;
-import javafx.scene.text.Font;
-import jgnash.report.ui.jasper.ReportFactory;
+
+import jgnash.report.pdf.FontRegistry;
+import jgnash.report.pdf.ReportFactory;
 
 /**
  * Controller for Report Options.
@@ -37,8 +38,8 @@ public class ReportTabController {
 
     @FXML
     private void initialize() {
-        monoFontComboBox.getItems().setAll(Font.getFamilies());
-        proportionalFontComboBox.getItems().setAll(Font.getFamilies());
+        monoFontComboBox.getItems().setAll(FontRegistry.getFontList());
+        proportionalFontComboBox.getItems().setAll(FontRegistry.getFontList());
 
         monoFontComboBox.setValue(ReportFactory.getMonoFont());
         proportionalFontComboBox.setValue(ReportFactory.getProportionalFont());
