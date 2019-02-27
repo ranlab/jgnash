@@ -60,6 +60,7 @@ import java.util.Objects;
 import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 
 import static jgnash.report.table.AbstractReportTableModel.DEFAULT_GROUP;
@@ -210,9 +211,6 @@ public abstract class Report implements AutoCloseable {
     }
 
     public void setHeaderFont(final PDFont headerFont) {
-
-        System.out.println(headerFont.getName());
-
         this.headerFont = headerFont;
     }
 
@@ -917,7 +915,6 @@ public abstract class Report implements AutoCloseable {
             if (reportModel.isColumnVisible(i)) {
 
                 final String protoValue = reportModel.getColumnPrototypeValueAt(i);
-                System.out.println(protoValue);
 
                 float headerWidth = getStringWidth(reportModel.getColumnName(i), getHeaderFont(), getBaseFontSize()) + getCellPadding() * 3f;
                 float cellTextWidth = getStringWidth(protoValue, getTableFont(), getBaseFontSize()) + getCellPadding() * 3f;
@@ -990,6 +987,7 @@ public abstract class Report implements AutoCloseable {
     @Override
     public void close() throws IOException {
         pdfDocument.close();
+        Logger.getLogger(Report.class.getName()).info("Closed the PDDocument cleanly");
     }
 
     public boolean isForceGroupPagination() {
