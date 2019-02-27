@@ -39,7 +39,7 @@ import java.util.logging.Logger;
  */
 public class jGnash {
 
-    private static final String JFX_VERSION = "11.0.1";
+    private static final String JFX_VERSION = "11.0.2";
 
     private static final String MAVEN_REPO = "http://central.maven.org/maven2/org/openjfx/";
 

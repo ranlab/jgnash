@@ -1,5 +1,6 @@
 plugins {
     id 'edu.sc.seis.launch4j' version '2.4.4'
+    id 'org.openjfx.javafxplugin' version '0.0.7'
 }
 
 apply plugin: 'distribution'
@@ -7,6 +8,10 @@ apply plugin: 'application' // creates a task to run the full application
 
 description = 'jGnashFx Boot Loader'
 mainClassName = "jGnash"
+
+javafx {
+    modules = [ 'javafx.controls']
+}
 
 dependencies {
     compile project(':jgnash-fx')
