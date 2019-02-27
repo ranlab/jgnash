@@ -94,6 +94,10 @@ public class BalanceSheetReportController2 implements ReportController {
         handleReportRefresh();
     }
 
+    @Override
+    public void closeReport() throws IOException {
+        report.close();
+    }
 
     private void handleReportRefresh() {
 

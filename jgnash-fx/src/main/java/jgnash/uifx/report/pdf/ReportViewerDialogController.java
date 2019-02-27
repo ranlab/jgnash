@@ -319,6 +319,19 @@ public class ReportViewerDialogController {
         });
 
         setZoomRatio(1);
+
+        // this ensures the report is properly closed when the dialog is closed
+        parent.addListener((observable, oldValue, newValue) -> {
+            if (newValue != null) {
+                parent.get().getWindow().setOnCloseRequest(event -> {
+                    try {
+                        report.get().close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                });
+            }
+        });
     }
 
     private void refreshReport() {
@@ -390,7 +403,7 @@ public class ReportViewerDialogController {
         reportExecutor.schedule(() -> {
             if (reportExecutor.getQueue().size() < 1) {   // ignore if we already have one waiting in the queue
 
-                final Task<Void> task = new Task<Void>() {
+                final Task<Void> task = new Task<>() {
                     @Override
                     protected Void call() {
                         updateMessage(resources.getString("Message.CompilingReport"));
@@ -504,7 +517,7 @@ public class ReportViewerDialogController {
     // TODO page format modifications within the print dialog are ignored
     @FXML
     private void handlePrintAction() {
-        final Task<Void> task = new Task<Void>() {
+        final Task<Void> task = new Task<>() {
             @Override
             protected Void call() {
                 try {

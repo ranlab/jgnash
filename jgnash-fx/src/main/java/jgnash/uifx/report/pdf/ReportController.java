@@ -19,6 +19,7 @@ package jgnash.uifx.report.pdf;
 
 import jgnash.report.pdf.Report;
 
+import java.io.IOException;
 import java.util.function.Consumer;
 import java.util.prefs.Preferences;
 
@@ -56,4 +57,9 @@ public interface ReportController {
     default Preferences getPreferences() {
         return Preferences.userNodeForPackage(getClass()).node(getClass().getSimpleName());
     }
+
+    /**
+     * Closes the report
+     */
+    void closeReport() throws IOException;
 }
