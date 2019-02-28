@@ -38,7 +38,7 @@ import javafx.scene.control.CheckBox;
  *
  * @author Craig Cavanaugh
  */
-public class BalanceSheetReportController2 implements ReportController {
+public class BalanceSheetReportController implements ReportController {
 
     @FXML
     private DatePickerEx startDatePicker;
@@ -57,7 +57,7 @@ public class BalanceSheetReportController2 implements ReportController {
 
     private Runnable refreshRunnable = null;
 
-    public BalanceSheetReportController2() {
+    public BalanceSheetReportController() {
         super();
     }
 

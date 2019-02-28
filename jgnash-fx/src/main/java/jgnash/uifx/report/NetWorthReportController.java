@@ -38,7 +38,7 @@ import javafx.scene.control.CheckBox;
  *
  * @author Craig Cavanaugh
  */
-public class NetWorthReportController2 implements ReportController {
+public class NetWorthReportController implements ReportController {
 
     @FXML
     private DatePickerEx startDatePicker;
@@ -57,7 +57,7 @@ public class NetWorthReportController2 implements ReportController {
 
     private Runnable refreshRunnable = null;
 
-    public NetWorthReportController2() {
+    public NetWorthReportController() {
         super();
     }
 

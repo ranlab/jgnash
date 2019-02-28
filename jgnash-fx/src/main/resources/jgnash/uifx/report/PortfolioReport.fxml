@@ -8,7 +8,7 @@
 <?import jgnash.uifx.control.AccountComboBox?>
 
 <GridPane xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
-          fx:controller="jgnash.uifx.report.PortfolioReportController2" styleClass="form, dialog">
+          fx:controller="jgnash.uifx.report.PortfolioReportController" styleClass="form, dialog">
     <columnConstraints>
         <ColumnConstraints hgrow="ALWAYS"/>
     </columnConstraints>

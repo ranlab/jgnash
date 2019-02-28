@@ -43,7 +43,7 @@ import javafx.scene.control.ComboBox;
  *
  * @author Craig Cavanaugh
  */
-public class ProfitLossReportController2 implements ReportController {
+public class ProfitLossReportController implements ReportController {
 
     @FXML
     private ComboBox<Period> resolutionComboBox;
@@ -82,7 +82,7 @@ public class ProfitLossReportController2 implements ReportController {
 
     private Runnable refreshRunnable = null;
 
-    public ProfitLossReportController2() {
+    public ProfitLossReportController() {
         super();
     }
 

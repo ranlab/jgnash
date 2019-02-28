@@ -63,15 +63,15 @@ public class ReportActions {
                 FXMLUtils.load(ReportViewerDialogController.class.getResource("ReportViewerDialog.fxml"),
                         ResourceUtils.getString("Title.AccountRegister"));
 
-        final AccountRegisterReportController2 controller
-                = reportPair.getController().loadReportController("AccountRegisterReport2.fxml");
+        final AccountRegisterReportController controller
+                = reportPair.getController().loadReportController("AccountRegisterReport.fxml");
 
         if (controller != null) {
             controller.setAccount(account);
         }
 
         // Preserve size and location
-        StageUtils.addBoundsListener(reportPair.getStage(), AccountRegisterReportController2.class, MainView.getPrimaryStage());
+        StageUtils.addBoundsListener(reportPair.getStage(), AccountRegisterReportController.class, MainView.getPrimaryStage());
 
         reportPair.getStage().show();
     }
@@ -100,54 +100,54 @@ public class ReportActions {
         pair.getStage().show();
     }
 
-    public static void displayPortfolioReport2() {
+    public static void displayPortfolioReport() {
         final FXMLUtils.Pair<ReportViewerDialogController> reportPair =
                 FXMLUtils.load(ReportViewerDialogController.class.getResource("ReportViewerDialog.fxml"),
                         ResourceUtils.getString("Title.PortfolioReport"));
 
-        reportPair.getController().loadReportController("PortfolioReport2.fxml");
+        reportPair.getController().loadReportController("PortfolioReport.fxml");
 
         // Preserve size and location
-        StageUtils.addBoundsListener(reportPair.getStage(), PortfolioReportController2.class, MainView.getPrimaryStage());
+        StageUtils.addBoundsListener(reportPair.getStage(), PortfolioReportController.class, MainView.getPrimaryStage());
 
         reportPair.getStage().show();
     }
 
-    public static void displayProfitLossReport2() {
+    public static void displayProfitLossReport() {
         final FXMLUtils.Pair<ReportViewerDialogController> reportPair =
                 FXMLUtils.load(ReportViewerDialogController.class.getResource("ReportViewerDialog.fxml"),
                         ResourceUtils.getString("Title.ProfitLoss"));
 
-        reportPair.getController().loadReportController("ProfitLossReport2.fxml");
+        reportPair.getController().loadReportController("ProfitLossReport.fxml");
 
         // Preserve size and location
-        StageUtils.addBoundsListener(reportPair.getStage(), ProfitLossReportController2.class, MainView.getPrimaryStage());
+        StageUtils.addBoundsListener(reportPair.getStage(), ProfitLossReportController.class, MainView.getPrimaryStage());
 
         reportPair.getStage().show();
     }
 
-    public static void displayBalanceSheetReport2() {
+    public static void displayBalanceSheetReport() {
         final FXMLUtils.Pair<ReportViewerDialogController> reportPair =
                 FXMLUtils.load(ReportViewerDialogController.class.getResource("ReportViewerDialog.fxml"),
                         ResourceUtils.getString("Title.BalanceSheet"));
 
-        reportPair.getController().loadReportController("BalanceSheetReport2.fxml");
+        reportPair.getController().loadReportController("BalanceSheetReport.fxml");
 
         // Preserve size and location
-        StageUtils.addBoundsListener(reportPair.getStage(), BalanceSheetReportController2.class, MainView.getPrimaryStage());
+        StageUtils.addBoundsListener(reportPair.getStage(), BalanceSheetReportController.class, MainView.getPrimaryStage());
 
         reportPair.getStage().show();
     }
 
-    public static void displayNetWorthReport2() {
+    public static void displayNetWorthReport() {
         final FXMLUtils.Pair<ReportViewerDialogController> reportPair =
                 FXMLUtils.load(ReportViewerDialogController.class.getResource("ReportViewerDialog.fxml"),
                         ResourceUtils.getString("Word.NetWorth"));
 
-        reportPair.getController().loadReportController("NetWorthReport2.fxml");
+        reportPair.getController().loadReportController("NetWorthReport.fxml");
 
         // Preserve size and location
-        StageUtils.addBoundsListener(reportPair.getStage(), NetWorthReportController2.class, MainView.getPrimaryStage());
+        StageUtils.addBoundsListener(reportPair.getStage(), NetWorthReportController.class, MainView.getPrimaryStage());
 
         reportPair.getStage().show();
     }

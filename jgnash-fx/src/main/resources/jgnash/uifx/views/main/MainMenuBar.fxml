@@ -92,11 +92,11 @@
             <MenuItem text="%Menu.PeriodicAccountBalance.Name" onAction="#handleDisplayAccountBalanceChart"/>
         </Menu>
         <Menu text="%Menu.Account.Name">
-            <MenuItem text="%Menu.AccountRegister.Name" onAction="#handleDisplayAccountRegisterReport2"/>
-            <MenuItem text="%Menu.NetWorth.Name" onAction="#handleDisplayNetWorthReport2"/>
-            <MenuItem text="%Menu.BalanceSheet.Name" onAction="#handleDisplayBalanceSheetReport2"/>
-            <MenuItem text="%Menu.ProfitLoss.Name" onAction="#handleDisplayProfitLossReport2"/>
-            <MenuItem text="%Menu.Portfolio.Name" onAction="#handleDisplayPortfolioReport2"/>
+            <MenuItem text="%Menu.AccountRegister.Name" onAction="#handleDisplayAccountRegisterReport"/>
+            <MenuItem text="%Menu.NetWorth.Name" onAction="#handleDisplayNetWorthReport"/>
+            <MenuItem text="%Menu.BalanceSheet.Name" onAction="#handleDisplayBalanceSheetReport"/>
+            <MenuItem text="%Menu.ProfitLoss.Name" onAction="#handleDisplayProfitLossReport"/>
+            <MenuItem text="%Menu.Portfolio.Name" onAction="#handleDisplayPortfolioReport"/>
         </Menu>
     </Menu>
 

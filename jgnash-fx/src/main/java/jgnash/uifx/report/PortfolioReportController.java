@@ -39,7 +39,7 @@ import javafx.scene.control.CheckBox;
  *
  * @author Craig Cavanaugh
  */
-public class PortfolioReportController2 implements ReportController {
+public class PortfolioReportController implements ReportController {
 
     private static final String RECURSIVE = "recursive";
 

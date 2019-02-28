@@ -1,16 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.scene.control.CheckBox?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.layout.ColumnConstraints?>
 <?import javafx.scene.layout.GridPane?>
 <?import javafx.scene.layout.RowConstraints?>
 <?import jgnash.uifx.control.DatePickerEx?>
 
-<?import javafx.scene.control.ComboBox?>
-<GridPane xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
-          fx:controller="jgnash.uifx.report.ProfitLossReportController2" styleClass="form, dialog">
+<?import javafx.scene.control.CheckBox?>
+<?import jgnash.uifx.control.AccountComboBox?>
+<?import javafx.scene.control.TextField?>
 
+<GridPane xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1"
+          fx:controller="jgnash.uifx.report.AccountRegisterReportController" styleClass="form, dialog">
     <columnConstraints>
         <ColumnConstraints hgrow="ALWAYS"/>
     </columnConstraints>
@@ -22,11 +23,12 @@
     <GridPane styleClass="form">
         <columnConstraints>
             <ColumnConstraints hgrow="NEVER" minWidth="-Infinity"/>
-            <ColumnConstraints hgrow="NEVER"/>
+            <ColumnConstraints hgrow="NEVER" minWidth="105" maxWidth="105"/>
             <ColumnConstraints hgrow="NEVER" minWidth="-Infinity"/>
-            <ColumnConstraints hgrow="NEVER"/>
+            <ColumnConstraints hgrow="NEVER" minWidth="105" maxWidth="105"/>
+            <ColumnConstraints hgrow="ALWAYS" minWidth="120" prefWidth="180" maxWidth="Infinity"/>
             <ColumnConstraints hgrow="NEVER" minWidth="-Infinity"/>
-            <ColumnConstraints hgrow="NEVER"/>
+            <ColumnConstraints hgrow="NEVER" minWidth="-Infinity"/>
         </columnConstraints>
         <rowConstraints>
             <RowConstraints vgrow="NEVER"/>
@@ -36,27 +38,23 @@
         <DatePickerEx fx:id="startDatePicker" GridPane.columnIndex="1"/>
         <Label text="%Label.EndDate" GridPane.columnIndex="2"/>
         <DatePickerEx fx:id="endDatePicker" GridPane.columnIndex="3"/>
-        <Label text="%Label.Resolution" GridPane.columnIndex="4"/>
-        <ComboBox fx:id="resolutionComboBox" GridPane.columnIndex="5"/>
+        <AccountComboBox fx:id="accountComboBox" GridPane.columnIndex="4"/>
+        <CheckBox text="%Button.DetailSplits" fx:id="showSplitsCheckBox" GridPane.columnIndex="5"/>
+        <CheckBox text="%Button.ShowTimestamp" fx:id="showTimestampCheckBox" GridPane.columnIndex="6"/>
     </GridPane>
 
     <GridPane styleClass="form" GridPane.rowIndex="1">
         <columnConstraints>
-            <ColumnConstraints hgrow="NEVER" minWidth="-Infinity"/>
-            <ColumnConstraints hgrow="NEVER"/>
-            <ColumnConstraints hgrow="NEVER" minWidth="-Infinity"/>
-            <ColumnConstraints hgrow="NEVER" minWidth="-Infinity"/>
-            <ColumnConstraints hgrow="NEVER" minWidth="-Infinity"/>
+            <ColumnConstraints hgrow="NEVER" minWidth="-Infinity" maxWidth="210"/>
+            <ColumnConstraints hgrow="NEVER" minWidth="-Infinity" maxWidth="210"/>
         </columnConstraints>
         <rowConstraints>
             <RowConstraints vgrow="NEVER"/>
         </rowConstraints>
 
-        <Label text="%Label.SortOrder"/>
-        <ComboBox fx:id="sortOrderComboBox" GridPane.columnIndex="1" onAction="#handleRefresh"/>
-        <CheckBox fx:id="showLongNamesCheckBox" text="%Button.UseLongNames" GridPane.columnIndex="2"/>
-        <CheckBox fx:id="hideZeroBalanceAccounts" text="%Button.HideZeroBalance" GridPane.columnIndex="3"/>
-        <CheckBox fx:id="showAccountPercentages" text="%Button.ShowPercentValues" GridPane.columnIndex="4"/>
+        <TextField fx:id="payeeFilterTextField" promptText="%ToolTip.FilterPayee" />
+        <TextField fx:id="memoFilterTextField" promptText="%ToolTip.FilterMemo" GridPane.columnIndex="1"/>
+
     </GridPane>
 
 </GridPane>

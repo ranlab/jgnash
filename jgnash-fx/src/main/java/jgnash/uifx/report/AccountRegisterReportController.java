@@ -42,7 +42,7 @@ import javafx.scene.control.TextField;
  *
  * @author Craig Cavanaugh
  */
-public class AccountRegisterReportController2 implements ReportController {
+public class AccountRegisterReportController implements ReportController {
 
     @FXML
     private TextField memoFilterTextField;
@@ -73,7 +73,7 @@ public class AccountRegisterReportController2 implements ReportController {
 
     private Runnable refreshRunnable = null;
 
-    public AccountRegisterReportController2() {
+    public AccountRegisterReportController() {
         super();
     }
 
