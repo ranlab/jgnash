@@ -61,7 +61,7 @@ import jgnash.util.Nullable;
  */
 public class EngineFactory {
 
-    public static final char[] EMPTY_PASSWORD = new char[]{};
+    public static final char[] EMPTY_PASSWORD = new char[] {};
 
     public static final String LOCALHOST = "localhost";
 
@@ -144,17 +144,18 @@ public class EngineFactory {
 
         final DataStore xmlDataStore = new XMLDataStore();
 
-        Path xmlFile = Paths.get(FileUtils.stripFileExtension(fileName) + "-" + dateTimeFormatter.format(LocalDateTime.now())
-                + xmlDataStore.getFileExt());
+        Path xmlFile = Paths
+            .get(FileUtils.stripFileExtension(fileName) + "-" + dateTimeFormatter.format(LocalDateTime.now()) + xmlDataStore.getFileExt());
 
         // push the intermediary file to the temporary directory
-        xmlFile = Paths.get(System.getProperty("java.io.tmpdir") + xmlFile.getFileSystem().getSeparator()
-                + xmlFile.getFileName().toString());
+        xmlFile = Paths
+            .get(System.getProperty("java.io.tmpdir") + xmlFile.getFileSystem().getSeparator() + xmlFile.getFileName().toString());
 
-        xmlDataStore.saveAs(xmlFile, objects, ignored -> { });
+        xmlDataStore.saveAs(xmlFile, objects, ignored -> {
+        });
 
-        Path zipFile = Paths.get(FileUtils.stripFileExtension(fileName) + "-" + dateTimeFormatter.format(LocalDateTime.now())
-                + ".zip");
+        final Path zipFile = Paths
+            .get(FileUtils.stripFileExtension(fileName) + "-" + dateTimeFormatter.format(LocalDateTime.now()) + ".zip");
 
         FileUtils.compressFile(xmlFile, zipFile);
 
@@ -173,14 +174,14 @@ public class EngineFactory {
 
         // '\' on Windows platform must be replaced with '\\' to prevent an exception
         if (OS.isSystemWindows()) {
-            baseFile = baseFile.replace("\\","\\\\");
+            baseFile = baseFile.replace("\\", "\\\\");
         }
 
         // old files use the base file name plus a '-' and a 8 digit date plus a '-' and a 4 digit time stamp
         final List<Path> fileList = FileUtils.getDirectoryListing(path.getParent(), baseFile + "-\\d{8}-\\d{4}.zip");
 
         if (fileList.size() > limit) {
-            for (int i = 0; i < fileList.size() - limit; i++) {
+            for (int i = 0; i < (fileList.size() - limit); i++) {
                 try {
                     Files.delete(fileList.get(i));
                 } catch (final IOException e) {
@@ -191,8 +192,8 @@ public class EngineFactory {
     }
 
     public static synchronized void closeEngine(final String engineName) {
-        Engine oldEngine = engineMap.get(engineName);
-        DataStore oldDataStore = dataStoreMap.get(engineName);
+        final Engine oldEngine = engineMap.get(engineName);
+        final DataStore oldDataStore = dataStoreMap.get(engineName);
 
         if (oldEngine != null) {
 
@@ -201,9 +202,9 @@ public class EngineFactory {
 
             // Post a message so the GUI knows what is going on
             final Message message = new Message(MessageChannel.SYSTEM, ChannelEvent.FILE_CLOSING, oldEngine);
-            MessageBus.getInstance(engineName).fireBlockingEvent(message);  // block until event has been completely processed
+            MessageBus.getInstance(engineName).fireBlockingEvent(message); // block until event has been completely processed
 
-            if (oldEngine.isFileDirty()) {  // should a backup file be created?
+            if (oldEngine.isFileDirty()) { // should a backup file be created?
                 // Dump an XML backup
                 if (oldEngine.createBackups() && oldDataStore.isLocal()) {
                     exportCompressedXML(engineName);
@@ -241,8 +242,7 @@ public class EngineFactory {
      * @return new {@code Engine} instance if successful, null otherwise
      * @see Engine
      */
-    public static synchronized Engine bootLocalEngine(final String fileName, final String engineName,
-                                                      final char[] password) {
+    public static synchronized Engine bootLocalEngine(final String fileName, final String engineName, final char[] password) {
         final DataStoreType type = getDataStoreByType(fileName);
 
         Engine engine = null;
@@ -266,41 +266,49 @@ public class EngineFactory {
      * @see Engine
      * @see DataStoreType
      */
-    public static synchronized Engine bootLocalEngine(final String fileName, final String engineName,
-                                                      final char[] password, final DataStoreType type) {
+    public static synchronized Engine bootLocalEngine(final String fileName,
+        final String engineName,
+        final char[] password,
+        final DataStoreType type) {
 
-        Instant start = Instant.now();
+        final Instant start = Instant.now();
 
         MessageBus.getInstance(engineName).setLocal();
 
         final DataStore dataStore = type.getDataStore();
 
-        final Engine engine = dataStore.getLocalEngine(fileName, engineName, password);
+        final jgnash.engine.Engine engine = dataStore.getLocalEngine(fileName, engineName, password);
 
         if (engine != null) {
             logger.info(ResourceUtils.getString("Message.EngineStart"));
             engineMap.put(engineName, engine);
             dataStoreMap.put(engineName, dataStore);
 
-            Message message = new Message(MessageChannel.SYSTEM, ChannelEvent.FILE_LOAD_SUCCESS, engine);
+            final Message message = new Message(MessageChannel.SYSTEM, ChannelEvent.FILE_LOAD_SUCCESS, engine);
             MessageBus.getInstance(engineName).fireEvent(message);
 
             if (engineName.equals(EngineFactory.DEFAULT)) {
-                Preferences pref = Preferences.userNodeForPackage(EngineFactory.class);
+                final Preferences pref = Preferences.userNodeForPackage(EngineFactory.class);
 
                 pref.putBoolean(USED_PASSWORD, password.length > 0);
                 pref.put(LAST_DATABASE, fileName);
                 pref.putBoolean(LAST_REMOTE, false);
             }
 
-            logger.log(Level.INFO, "Boot time was {0} milliseconds",
-                    ChronoUnit.MILLIS.between(start, Instant.now()));
+            logger.log(Level.INFO, "Boot time was {0} milliseconds", ChronoUnit.MILLIS.between(start, Instant.now()));
         }
         return engine;
     }
 
-    public static synchronized Engine bootClientEngine(final String host, final int port, final char[] password,
-                                                       final String engineName) {
+    /**
+     * Starts a client engine against remote server.
+     * @param host
+     * @param port
+     * @param password
+     * @param engineName
+     * @return
+     */
+    public static synchronized Engine bootClientEngine(final String host, final int port, final char[] password, final String engineName) {
 
         if (engineMap.get(engineName) != null) {
             throw new EngineException("A stale engine was found in the map");
@@ -311,8 +319,7 @@ public class EngineFactory {
         Engine engine = null;
 
         // start the client message bus
-        if (MessageBus.getInstance(engineName).setRemote(host, port + JpaNetworkServer.MESSAGE_SERVER_INCREMENT,
-                password)) {
+        if (MessageBus.getInstance(engineName).setRemote(host, port + JpaNetworkServer.MESSAGE_SERVER_INCREMENT, password)) {
 
             pref.putInt(LAST_PORT, port);
             pref.put(LAST_HOST, host);
@@ -324,7 +331,7 @@ public class EngineFactory {
             final String remoteDataBasePath = messageBus.getRemoteDataBasePath();
             final DataStoreType dataStoreType = messageBus.getRemoteDataStoreType();
 
-            if (remoteDataBasePath == null || remoteDataBasePath.isEmpty() || dataStoreType == null) {
+            if ((remoteDataBasePath == null) || remoteDataBasePath.isEmpty() || (dataStoreType == null)) {
                 throw new EngineException("Invalid connection wih the message bus");
             }
 
@@ -332,7 +339,7 @@ public class EngineFactory {
             logger.log(Level.INFO, "Remote data store was {0}", dataStoreType.name());
             logger.log(Level.INFO, "Engine name was {0}", engineName);
 
-            DataStore dataStore = dataStoreType.getDataStore();
+            final DataStore dataStore = dataStoreType.getDataStore();
 
             // connect to the remote server
             engine = dataStore.getClientEngine(host, port, password, remoteDataBasePath);
@@ -368,8 +375,8 @@ public class EngineFactory {
                 return DataStoreType.H2MV_DATABASE;
             case hsql:
                 return DataStoreType.HSQL_DATABASE;
-            default:            	
-            	break;
+            default:
+                break;
         }
 
         return null;
@@ -401,7 +408,7 @@ public class EngineFactory {
                 }
                 break;
             default:
-            	break;
+                break;
         }
 
         return version;
@@ -487,12 +494,13 @@ public class EngineFactory {
      * @param percentCompleteConsumer progress consumer
      * @throws IOException IO error
      */
-    public static void saveAs(final String destination, final DoubleConsumer percentCompleteConsumer) throws IOException {
+    public static void saveAs(final String destination, final DoubleConsumer percentCompleteConsumer)
+        throws IOException {
 
         final String fileExtension = "." + FileUtils.getFileExtension(destination);
-        DataStoreType newFileType = DataStoreType.BINARY_XSTREAM;   // default for a new file
+        DataStoreType newFileType = DataStoreType.BINARY_XSTREAM; // default for a new file
 
-        if (fileExtension.length() > 1) {   // should have more than just the period in it
+        if (fileExtension.length() > 1) { // should have more than just the period in it
             for (final DataStoreType type : DataStoreType.values()) {
                 if (type.getDataStore().getFileExt().equalsIgnoreCase(fileExtension)) {
                     newFileType = type;
@@ -501,8 +509,7 @@ public class EngineFactory {
             }
         }
 
-        final Path newFile = Paths.get(FileUtils.stripFileExtension(destination)
-                + newFileType.getDataStore().getFileExt());
+        final Path newFile = Paths.get(FileUtils.stripFileExtension(destination) + newFileType.getDataStore().getFileExt());
 
         final Path current = Paths.get(EngineFactory.getActiveDatabase());
 
@@ -522,15 +529,14 @@ public class EngineFactory {
 
                     // Write everything to a temporary file
                     DataStoreType.BINARY_XSTREAM.getDataStore().saveAs(tempFile, objects, value -> {
-                        percentCompleteConsumer.accept(value * 0.5);   // doing it twice
+                        percentCompleteConsumer.accept(value * 0.5); // doing it twice
                     });
 
                     // Close the current file
                     EngineFactory.closeEngine(EngineFactory.DEFAULT);
 
                     // Boot the engine using the temporary file
-                    EngineFactory.bootLocalEngine(tempFile.toString(), EngineFactory.DEFAULT,
-                            EngineFactory.EMPTY_PASSWORD);
+                    EngineFactory.bootLocalEngine(tempFile.toString(), EngineFactory.DEFAULT, EngineFactory.EMPTY_PASSWORD);
 
                     engine = EngineFactory.getEngine(EngineFactory.DEFAULT);
 
@@ -540,34 +546,30 @@ public class EngineFactory {
                         objects = engine.getStoredObjects();
 
                         // Write everything to the new file and close
-                        newFileType.getDataStore().saveAs(newFile, objects,
-                                value -> percentCompleteConsumer.accept(0.5 + value * 0.5));
+                        newFileType.getDataStore().saveAs(newFile, objects, value -> percentCompleteConsumer.accept(0.5 + (value * 0.5)));
                         EngineFactory.closeEngine(EngineFactory.DEFAULT);
 
                         percentCompleteConsumer.accept(1);
 
                         // Boot the engine with the new file
-                        EngineFactory.bootLocalEngine(newFile.toString(), EngineFactory.DEFAULT,
-                                EngineFactory.EMPTY_PASSWORD);
+                        EngineFactory.bootLocalEngine(newFile.toString(), EngineFactory.DEFAULT, EngineFactory.EMPTY_PASSWORD);
                     }
 
                     try {
                         Files.delete(tempFile);
                     } catch (final IOException ioe) {
-                        Logger.getLogger(EngineFactory.class.getName())
-                                .info(ResourceUtils.getString("Message.Error.RemoveTempFile"));
+                        Logger.getLogger(EngineFactory.class.getName()).info(ResourceUtils.getString("Message.Error.RemoveTempFile"));
                     }
                 }
-            } else {    // Simple
-                Engine engine = EngineFactory.getEngine(EngineFactory.DEFAULT);
+            } else { // Simple
+                final Engine engine = EngineFactory.getEngine(EngineFactory.DEFAULT);
 
                 if (engine != null) {
                     final Collection<StoredObject> objects = engine.getStoredObjects();
                     newFileType.getDataStore().saveAs(newFile, objects, percentCompleteConsumer);
                     EngineFactory.closeEngine(EngineFactory.DEFAULT);
 
-                    EngineFactory.bootLocalEngine(newFile.toString(), EngineFactory.DEFAULT,
-                            EngineFactory.EMPTY_PASSWORD);
+                    EngineFactory.bootLocalEngine(newFile.toString(), EngineFactory.DEFAULT, EngineFactory.EMPTY_PASSWORD);
                 }
             }
         }
@@ -580,24 +582,27 @@ public class EngineFactory {
      * @param newFileName new file
      * @param password password
      * @param percentCompleteConsumer progress consumer
-     * 
+     *
      * @throws IOException IO error
      */
-    public static void saveAs(final String fileName, final String newFileName, final char[] password,
-                              final DoubleConsumer percentCompleteConsumer) throws IOException {
+    public static void saveAs(final String fileName,
+        final String newFileName,
+        final char[] password,
+        final DoubleConsumer percentCompleteConsumer)
+        throws IOException {
 
         Objects.requireNonNull(fileName);
         Objects.requireNonNull(newFileName);
         Objects.requireNonNull(password);
 
-        final String ENGINE = UUID.randomUUID().toString();    // create a temporary engine ID for utility use only
+        final String ENGINE = UUID.randomUUID().toString(); // create a temporary engine ID for utility use only
 
         final String fileExtension = "." + FileUtils.getFileExtension(newFileName);
 
-        DataStoreType newFileType = DataStoreType.BINARY_XSTREAM;   // default for a new file
+        DataStoreType newFileType = DataStoreType.BINARY_XSTREAM; // default for a new file
 
         // Determine the data store type given the file extension
-        if (fileExtension.length() > 1) {   // should have more than just the period in it
+        if (fileExtension.length() > 1) { // should have more than just the period in it
             for (final DataStoreType type : DataStoreType.values()) {
                 if (type.getDataStore().getFileExt().equalsIgnoreCase(fileExtension)) {
                     newFileType = type;
@@ -606,8 +611,7 @@ public class EngineFactory {
             }
         }
 
-        final Path newFile = Paths.get(FileUtils.stripFileExtension(newFileName)
-                + newFileType.getDataStore().getFileExt());
+        final Path newFile = Paths.get(FileUtils.stripFileExtension(newFileName) + newFileType.getDataStore().getFileExt());
 
         final Path current = Paths.get(fileName);
 
@@ -617,7 +621,7 @@ public class EngineFactory {
             // Need to know the data store type for correct behavior
             final DataStoreType currentType = EngineFactory.getDataStoreByType(fileName);
 
-            Objects.requireNonNull(currentType);    // fail if type is null
+            Objects.requireNonNull(currentType); // fail if type is null
 
             // Create a utility engine instead of using the default
             Engine engine = EngineFactory.bootLocalEngine(fileName, ENGINE, password);
@@ -630,8 +634,8 @@ public class EngineFactory {
                     Collection<StoredObject> objects = engine.getStoredObjects();
 
                     // Write everything to a temporary file
-                    DataStoreType.BINARY_XSTREAM.getDataStore().saveAs(tempFile, objects,  value -> {
-                        percentCompleteConsumer.accept(value * 0.5);   // doing it twice
+                    DataStoreType.BINARY_XSTREAM.getDataStore().saveAs(tempFile, objects, value -> {
+                        percentCompleteConsumer.accept(value * 0.5); // doing it twice
                     });
                     EngineFactory.closeEngine(ENGINE);
 
@@ -644,8 +648,7 @@ public class EngineFactory {
                         objects = engine.getStoredObjects();
 
                         // Write everything to the new file
-                        newFileType.getDataStore().saveAs(newFile, objects,
-                                value -> percentCompleteConsumer.accept(0.5 + value * 0.5));
+                        newFileType.getDataStore().saveAs(newFile, objects, value -> percentCompleteConsumer.accept(0.5 + (value * 0.5)));
                         EngineFactory.closeEngine(ENGINE);
 
                         // reset the password
@@ -656,11 +659,10 @@ public class EngineFactory {
                     try {
                         Files.delete(tempFile);
                     } catch (final IOException ioe) {
-                        Logger.getLogger(EngineFactory.class.getName())
-                                .info(ResourceUtils.getString("Message.Error.RemoveTempFile"));
+                        Logger.getLogger(EngineFactory.class.getName()).info(ResourceUtils.getString("Message.Error.RemoveTempFile"));
                     }
                 }
-            } else {    // Simple
+            } else { // Simple
                 if (engine != null) {
                     final Collection<StoredObject> objects = engine.getStoredObjects();
                     newFileType.getDataStore().saveAs(newFile, objects, percentCompleteConsumer);

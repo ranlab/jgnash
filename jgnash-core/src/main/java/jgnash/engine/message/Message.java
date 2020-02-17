@@ -17,33 +17,38 @@
  */
 package jgnash.engine.message;
 
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.util.EnumMap;
+import java.util.Objects;
+import java.util.UUID;
+
 import jgnash.engine.Engine;
 import jgnash.engine.EngineFactory;
 import jgnash.engine.StoredObject;
 import jgnash.util.NotNull;
-
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.Serializable;
-import java.util.EnumMap;
-import java.util.Objects;
-import java.util.UUID;
 
 /**
  * Message object.
  *
  * @author Craig Cavanaugh
  */
-public class Message implements Serializable, Cloneable {
+public class Message implements java.io.Serializable, java.lang.Cloneable {
 
-    private ChannelEvent event;
+    /**
+     *
+     */
+    private static final long serialVersionUID = -2746245050698299677L;
 
-    private MessageChannel channel;
+    private jgnash.engine.message.ChannelEvent event;
+
+    private jgnash.engine.message.MessageChannel channel;
 
     private String source;
 
-    private transient EnumMap<MessageProperty, StoredObject> properties = new EnumMap<>(MessageProperty.class);
+    private transient EnumMap<jgnash.engine.message.MessageProperty, StoredObject> properties = new EnumMap<>(
+        jgnash.engine.message.MessageProperty.class);
 
     /**
      * Used to flag message sent remotely.
@@ -71,11 +76,11 @@ public class Message implements Serializable, Cloneable {
     }
 
     public MessageChannel getChannel() {
-        return channel;
+        return this.channel;
     }
 
     public ChannelEvent getEvent() {
-        return event;
+        return this.event;
     }
 
     /**
@@ -85,7 +90,7 @@ public class Message implements Serializable, Cloneable {
      * @param value message value
      */
     public void setObject(@NotNull final MessageProperty key, @NotNull final StoredObject value) {
-        properties.put(Objects.requireNonNull(key), Objects.requireNonNull(value));
+        this.properties.put(Objects.requireNonNull(key), Objects.requireNonNull(value));
     }
 
     /**
@@ -97,19 +102,19 @@ public class Message implements Serializable, Cloneable {
      */
     @SuppressWarnings("unchecked")
     public <T extends StoredObject> T getObject(final MessageProperty key) {
-        return (T) properties.get(key);
+        return (T) this.properties.get(key);
     }
 
     public String getSource() {
-        return source;
+        return this.source;
     }
 
     void setRemote() {
-        remote = true;
+        this.remote = true;
     }
 
     public boolean isRemote() {
-        return remote;
+        return this.remote;
     }
 
     /**
@@ -121,16 +126,17 @@ public class Message implements Serializable, Cloneable {
      * value of each property
      */
     @SuppressWarnings("unused")
-    private void writeObject(final ObjectOutputStream s) throws IOException {
+    private void writeObject(final ObjectOutputStream s)
+        throws IOException {
         s.defaultWriteObject();
 
         // write the property count
-        s.writeInt(properties.size());
+        s.writeInt(this.properties.size());
 
-        StoredObject[] values = properties.values().toArray(new StoredObject[0]);
-        MessageProperty[] keys = properties.keySet().toArray(new MessageProperty[0]);
+        final StoredObject[] values = this.properties.values().toArray(new StoredObject[0]);
+        final MessageProperty[] keys = this.properties.keySet().toArray(new MessageProperty[0]);
 
-        for (int i = 0; i < properties.size(); i++) {
+        for (int i = 0; i < this.properties.size(); i++) {
             s.writeObject(keys[i]);
             s.writeUTF(values[i].getClass().getName());
             s.writeUTF(values[i].getUuid().toString());
@@ -146,11 +152,13 @@ public class Message implements Serializable, Cloneable {
      * @serialData Read serializable fields, if any exist. Read the integer count of properties. Read the key and value
      * of each property
      */
-    @SuppressWarnings({"unchecked", "unused"})
-    private void readObject(final ObjectInputStream s) throws IOException, ClassNotFoundException {
+    @SuppressWarnings({ "unchecked", "unused" })
+    private void readObject(final ObjectInputStream s)
+        throws IOException,
+            ClassNotFoundException {
         s.defaultReadObject();
 
-        properties = new EnumMap<>(MessageProperty.class);
+        this.properties = new EnumMap<>(MessageProperty.class);
 
         final int size = s.readInt();
 
@@ -158,17 +166,18 @@ public class Message implements Serializable, Cloneable {
         Objects.requireNonNull(engine);
 
         for (int i = 0; i < size; i++) {
-            MessageProperty key = (MessageProperty) s.readObject();
-            Class<? extends StoredObject> clazz = (Class<? extends StoredObject>) Class.forName(s.readUTF());
-            StoredObject value = engine.getStoredObjectByUuid(clazz, UUID.fromString(s.readUTF()));
-            properties.put(key, value);
+            final MessageProperty key = (MessageProperty) s.readObject();
+            final Class<? extends StoredObject> clazz = (Class<? extends StoredObject>) Class.forName(s.readUTF());
+            final StoredObject value = engine.getStoredObjectByUuid(clazz, UUID.fromString(s.readUTF()));
+            this.properties.put(key, value);
         }
     }
 
     @Override
-    public Message clone() throws CloneNotSupportedException {
+    public Message clone()
+        throws CloneNotSupportedException {
         final Message m = (Message) super.clone();
-        m.properties = properties.clone();
+        m.properties = this.properties.clone();
 
         return m;
     }
@@ -181,6 +190,6 @@ public class Message implements Serializable, Cloneable {
      */
     @Override
     public String toString() {
-        return String.format("Message [event=%s, channel=%s, source=%s]", event, channel, source);
+        return String.format("Message [event=%s, channel=%s, source=%s]", this.event, this.channel, this.source);
     }
 }

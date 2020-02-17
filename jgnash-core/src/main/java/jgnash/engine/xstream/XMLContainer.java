@@ -32,6 +32,11 @@ import java.util.function.DoubleConsumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import com.thoughtworks.xstream.XStream;
+import com.thoughtworks.xstream.converters.reflection.PureJavaReflectionProvider;
+import com.thoughtworks.xstream.io.xml.PrettyPrintWriter;
+import com.thoughtworks.xstream.io.xml.StaxDriver;
+
 import jgnash.engine.CommodityNode;
 import jgnash.engine.Config;
 import jgnash.engine.Engine;
@@ -42,11 +47,6 @@ import jgnash.engine.StoredObjectComparator;
 import jgnash.engine.Tag;
 import jgnash.engine.budget.Budget;
 import jgnash.engine.recurring.Reminder;
-
-import com.thoughtworks.xstream.XStream;
-import com.thoughtworks.xstream.io.xml.StaxDriver;
-import com.thoughtworks.xstream.converters.reflection.PureJavaReflectionProvider;
-import com.thoughtworks.xstream.io.xml.PrettyPrintWriter;
 import jgnash.util.NotNull;
 
 /**
@@ -68,10 +68,11 @@ class XMLContainer extends AbstractXStreamContainer {
      * @param objects Collection of StoredObjects to write
      * @param path    file to write
      */
-    static synchronized void writeXML(@NotNull final Collection<StoredObject> objects, @NotNull final Path path,
-                                      @NotNull final DoubleConsumer percentCompleteConsumer) {
+    static synchronized void writeXML(@NotNull final Collection<StoredObject> objects,
+        @NotNull final Path path,
+        @NotNull final DoubleConsumer percentCompleteConsumer) {
 
-        Logger logger = Logger.getLogger(XMLContainer.class.getName());
+        final Logger logger = Logger.getLogger(XMLContainer.class.getName());
 
         if (!Files.exists(path.getParent())) {
             try {
@@ -86,7 +87,7 @@ class XMLContainer extends AbstractXStreamContainer {
 
         createBackup(path);
 
-        List<StoredObject> list = new ArrayList<>();
+        final List<StoredObject> list = new ArrayList<>();
 
         list.addAll(query(objects, Budget.class));
         list.addAll(query(objects, Config.class));
@@ -116,7 +117,7 @@ class XMLContainer extends AbstractXStreamContainer {
 
             try (final ObjectOutputStream out = xstream.createObjectOutputStream(new PrettyPrintWriter(writer))) {
                 out.writeObject(list);
-                out.flush();     // forcibly flush before letting go of the resources to help older windows systems write correctly
+                out.flush(); // forcibly flush before letting go of the resources to help older windows systems write correctly
             } catch (final Exception e) {
                 logger.log(Level.SEVERE, e.getLocalizedMessage(), e);
             }
@@ -131,43 +132,48 @@ class XMLContainer extends AbstractXStreamContainer {
 
     @Override
     void commit() {
-        writeXML();
+        this.writeXML();
     }
 
     private synchronized void writeXML() {
-        readWriteLock.readLock().lock();
+        this.readWriteLock.readLock().lock();
 
         try {
-            releaseFileLock();
-            writeXML(objects, path, ignored -> { });
+            this.releaseFileLock();
+            writeXML(this.objects, this.path, ignored -> {
+            });
         } finally {
-            if (!acquireFileLock()) { // lock the file on open
+            if (!this.acquireFileLock()) { // lock the file on open
                 Logger.getLogger(XMLContainer.class.getName()).severe("Could not acquire the file lock");
             }
-            readWriteLock.readLock().unlock();
+            this.readWriteLock.readLock().unlock();
         }
     }
 
     void readXML() {
 
         // A file lock will be held on Windows OS when reading
-        try (final Reader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
-            readWriteLock.writeLock().lock();
+        try (final Reader reader = Files.newBufferedReader(this.path, StandardCharsets.UTF_8)) {
+            this.readWriteLock.writeLock().lock();
 
-            final XStream xstream = configureXStream(new XStreamJVM9(new StoredObjectReflectionProvider(objects),
-                    new StaxDriver()));
+            final XStream xstream = configureXStream(
+                new XStreamJVM9(new StoredObjectReflectionProvider(this.objects), new com.thoughtworks.xstream.io.xml.StaxDriver()));
 
             try (final ObjectInputStream in = xstream.createObjectInputStream(reader)) {
-                in.readObject();
+                final java.lang.Object objStore = in.readObject();
+
+                System.out.println(objStore);
             }
 
         } catch (final IOException | ClassNotFoundException e) {
             Logger.getLogger(XMLContainer.class.getName()).log(Level.SEVERE, null, e);
+        } catch (final java.lang.Exception ex) {
+            Logger.getLogger(XMLContainer.class.getName()).log(Level.SEVERE, null, ex);
         } finally {
-            if (!acquireFileLock()) { // lock the file on open
+            if (!this.acquireFileLock()) { // lock the file on open
                 Logger.getLogger(XMLContainer.class.getName()).severe("Could not acquire the file lock");
             }
-            readWriteLock.writeLock().unlock();
+            this.readWriteLock.writeLock().unlock();
         }
     }
 }

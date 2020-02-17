@@ -32,8 +32,8 @@ import jgnash.engine.Engine;
 import jgnash.engine.StoredObject;
 import jgnash.engine.attachment.LocalAttachmentManager;
 import jgnash.engine.concurrent.LocalLockManager;
-import jgnash.util.NotNull;
 import jgnash.resource.util.ResourceUtils;
+import jgnash.util.NotNull;
 
 /**
  * XML specific code for data storage and creating an engine.
@@ -55,10 +55,10 @@ public class XMLDataStore implements DataStore {
      */
     @Override
     public void closeEngine() {
-        container.commit(); // force a commit
-        container.close();
+        this.container.commit(); // force a commit
+        this.container.close();
 
-        container = null;
+        this.container = null;
     }
 
     /**
@@ -67,18 +67,18 @@ public class XMLDataStore implements DataStore {
      * @see DataStore#getLocalEngine(java.lang.String, java.lang.String, char[])
      */
     @Override
-    public Engine getLocalEngine(final String fileName, final String engineName, final char[] password) {
+    public jgnash.engine.Engine getLocalEngine(final String fileName, final String engineName, final char[] password) {
 
         final Path path = Paths.get(fileName);
 
-        container = new XMLContainer(path);
+        this.container = new jgnash.engine.xstream.XMLContainer(path);
 
-        if (Files.exists(path)) {
-            container.readXML();
+        if (java.nio.file.Files.exists(path)) {
+            this.container.readXML();
         }
 
-        Engine engine = new Engine(new XStreamEngineDAO(container), new LocalLockManager(),
-                new LocalAttachmentManager(), engineName);
+        final jgnash.engine.Engine engine = new jgnash.engine.Engine(new XStreamEngineDAO(this.container), new LocalLockManager(),
+            new LocalAttachmentManager(), engineName);
 
         logger.info("Created local XML container and engine");
 
@@ -114,7 +114,7 @@ public class XMLDataStore implements DataStore {
      */
     @Override
     public final String getFileName() {
-        return container.getFileName();
+        return this.container.getFileName();
     }
 
     @Override
@@ -166,7 +166,7 @@ public class XMLDataStore implements DataStore {
             try {
                 container.readXML();
 
-                List<Config> list = container.query(Config.class);
+                final List<Config> list = container.query(Config.class);
 
                 if (list.size() == 1) {
                     fileVersion = Float.parseFloat(list.get(0).getFileFormat());

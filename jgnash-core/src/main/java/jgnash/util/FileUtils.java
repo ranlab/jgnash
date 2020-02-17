@@ -17,14 +17,14 @@
  */
 package jgnash.util;
 
+import static jgnash.util.LogUtil.logSevere;
+
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
-import java.nio.channels.OverlappingFileLockException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -51,8 +51,6 @@ import jgnash.engine.jpa.JpaH2MvDataStore;
 import jgnash.engine.jpa.JpaHsqlDataStore;
 import jgnash.engine.xstream.XMLDataStore;
 
-import static jgnash.util.LogUtil.logSevere;
-
 /**
  * File utilities.
  *
@@ -65,11 +63,15 @@ public final class FileUtils {
      */
     private static final String FILE_EXT_REGEX = "(?<=\\.).*$";
 
-    private static final String[] FILE_LOCK_EXTENSIONS = new String[]{JpaHsqlDataStore.LOCK_EXT,
-            JpaH2DataStore.LOCK_EXT, JpaH2MvDataStore.LOCK_EXT, ".lock"};
+    private static final String[] FILE_LOCK_EXTENSIONS = new String[] { JpaHsqlDataStore.LOCK_EXT,
+            JpaH2DataStore.LOCK_EXT,
+            JpaH2MvDataStore.LOCK_EXT,
+            ".lock" };
 
-    private static final String[] FILE_EXTENSIONS = new String[]{JpaH2DataStore.H2_FILE_EXT,
-            JpaH2MvDataStore.MV_FILE_EXT, JpaHsqlDataStore.FILE_EXT, XMLDataStore.FILE_EXT};
+    private static final String[] FILE_EXTENSIONS = new String[] { JpaH2DataStore.H2_FILE_EXT,
+            JpaH2MvDataStore.MV_FILE_EXT,
+            JpaHsqlDataStore.FILE_EXT,
+            XMLDataStore.FILE_EXT };
 
     public static final String SEPARATOR = System.getProperty("file.separator");
 
@@ -90,18 +92,21 @@ public final class FileUtils {
      * @param path {@code Path} to delete
      * @throws IOException thrown if an IO error occurs
      */
-    public static void deletePathAndContents(final Path path) throws IOException {
-        if (Files.exists(path)) {   // only try if it exists
+    public static void deletePathAndContents(final Path path)
+        throws IOException {
+        if (Files.exists(path)) { // only try if it exists
 
             Files.walkFileTree(path, new SimpleFileVisitor<>() {
                 @Override
-                public FileVisitResult visitFile(final Path file, final BasicFileAttributes attributes) throws IOException {
+                public FileVisitResult visitFile(final Path file, final BasicFileAttributes attributes)
+                    throws IOException {
                     Files.delete(file);
                     return FileVisitResult.CONTINUE;
                 }
 
                 @Override
-                public FileVisitResult postVisitDirectory(final Path dir, final IOException ex) throws IOException {
+                public FileVisitResult postVisitDirectory(final Path dir, final IOException ex)
+                    throws IOException {
                     Files.delete(dir);
                     return FileVisitResult.CONTINUE;
                 }
@@ -117,7 +122,8 @@ public final class FileUtils {
      * @return true if a lock file is found or the file is locked at the OS level.
      * @throws java.io.IOException thrown if file does not exist or it is a directory
      */
-    public static boolean isFileLocked(final String fileName) throws IOException {
+    public static boolean isFileLocked(final String fileName)
+        throws IOException {
 
         boolean result = false;
 
@@ -127,15 +133,16 @@ public final class FileUtils {
             }
         }
 
-        if (!result) {
-            try (final FileChannel channel = FileChannel.open(Paths.get(fileName), StandardOpenOption.READ,
-                    StandardOpenOption.WRITE)) {
+        if (result == false) {
+            // Check locked state at the OS level
+            try (final java.nio.channels.FileChannel channel = java.nio.channels.FileChannel
+                .open(Paths.get(fileName), StandardOpenOption.READ, StandardOpenOption.WRITE)) {
 
                 try (final FileLock lock = channel.tryLock()) {
                     if (lock == null) {
                         result = true;
                     }
-                } catch (final OverlappingFileLockException ex) {   // indicates file is already locked
+                } catch (final java.nio.channels.OverlappingFileLockException ex) { // indicates file is already locked
                     result = true;
                 }
             } catch (final IOException e) {
@@ -154,13 +161,13 @@ public final class FileUtils {
      * @return true if the lock file is determined to be stale
      * @throws IOException thrown if file does not exist or it is a directory
      */
-    public static boolean isLockFileStale(final String fileName) throws IOException {
+    public static boolean isLockFileStale(final String fileName)
+        throws IOException {
         boolean result = false;
 
         final long maxIterations = LOCK_FILE_PERIOD / LOCK_WAIT_PERIOD;
 
-        search:
-        for (final String extension : FILE_LOCK_EXTENSIONS) {
+        search: for (final String extension : FILE_LOCK_EXTENSIONS) {
 
             final Path path = Paths.get(FileUtils.stripFileExtension(fileName) + extension);
 
@@ -168,9 +175,9 @@ public final class FileUtils {
 
                 for (int i = 0; i < maxIterations; i++) {
 
-                    long timeStamp = lastModified(path);
+                    final long timeStamp = lastModified(path);
 
-                    if (System.currentTimeMillis() - timeStamp > LOCK_FILE_PERIOD) {
+                    if ((System.currentTimeMillis() - timeStamp) > LOCK_FILE_PERIOD) {
                         result = true;
                         break search;
                     }
@@ -188,7 +195,8 @@ public final class FileUtils {
         return result;
     }
 
-    public static boolean deleteLockFile(final String fileName) throws IOException {
+    public static boolean deleteLockFile(final String fileName)
+        throws IOException {
         boolean result = false;
 
         for (final String extension : FILE_LOCK_EXTENSIONS) {
@@ -216,14 +224,14 @@ public final class FileUtils {
 
         // check for known types first
         for (final String extension : FILE_EXTENSIONS) {
-            int index = fileName.toLowerCase().lastIndexOf(extension.toLowerCase());
+            final int index = fileName.toLowerCase().lastIndexOf(extension.toLowerCase());
 
             if (index >= 0) {
                 return fileName.substring(0, index);
             }
         }
 
-        int index = fileName.lastIndexOf('.');
+        final int index = fileName.lastIndexOf('.');
 
         if (index >= 0) {
             return fileName.substring(0, index);
@@ -239,7 +247,8 @@ public final class FileUtils {
      * @return last modification timestamp in millis
      * @throws IOException thrown if file is not found
      */
-    private static long lastModified(final Path path) throws IOException {
+    private static long lastModified(final Path path)
+        throws IOException {
         return Files.getLastModifiedTime(path).toMillis();
     }
 
@@ -265,7 +274,7 @@ public final class FileUtils {
 
         for (final String extension : FILE_EXTENSIONS) {
             if (fileName.toLowerCase().endsWith(extension.toLowerCase())) {
-                return extension.substring(1);  // skip the leading period
+                return extension.substring(1); // skip the leading period
             }
         }
 
@@ -292,7 +301,7 @@ public final class FileUtils {
 
         boolean result = false;
 
-        if (src != null && dst != null && !src.equals(dst)) {
+        if ((src != null) && (dst != null) && !src.equals(dst)) {
             try {
                 Files.copy(src, dst, StandardCopyOption.REPLACE_EXISTING);
                 result = true;
@@ -319,7 +328,7 @@ public final class FileUtils {
 
         // Try to open the zip file for output
         try (final OutputStream fos = new BufferedOutputStream(Files.newOutputStream(destination));
-             final ZipOutputStream zipOut = new ZipOutputStream(fos)) {
+            final ZipOutputStream zipOut = new ZipOutputStream(fos)) {
 
             // Try to open the input stream
             try (final InputStream in = new BufferedInputStream(Files.newInputStream(source, StandardOpenOption.READ))) {
@@ -331,8 +340,7 @@ public final class FileUtils {
                 // Transfer bytes from the file to the ZIP file
                 int length;
 
-
-                byte[] ioBuffer = new byte[DEFAULT_BUFFER_SIZE];
+                final byte[] ioBuffer = new byte[DEFAULT_BUFFER_SIZE];
 
                 while ((length = in.read(ioBuffer)) > 0) {
                     zipOut.write(ioBuffer, 0, length);
@@ -357,13 +365,12 @@ public final class FileUtils {
     public static List<Path> getDirectoryListing(final Path directory, final String regexPattern) {
         final List<Path> fileList = new ArrayList<>();
 
-        if (directory != null && Files.isDirectory(directory)) {
+        if ((directory != null) && Files.isDirectory(directory)) {
             final Pattern p = Pattern.compile(regexPattern);
 
             try (final Stream<Path> stream = Files.list(directory)) {
-                fileList.addAll(stream.filter(path -> p.matcher(path.toString()).matches())
-                                        .collect(Collectors.toList()));
-            } catch (IOException e) {
+                fileList.addAll(stream.filter(path -> p.matcher(path.toString()).matches()).collect(Collectors.toList()));
+            } catch (final IOException e) {
                 logSevere(FileUtils.class, e);
             }
 

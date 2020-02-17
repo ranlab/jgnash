@@ -17,11 +17,6 @@
  */
 package jgnash.bootloader;
 
-import jgnash.util.NotNull;
-
-import javax.swing.JOptionPane;
-import javax.xml.bind.DatatypeConverter;
-
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
@@ -29,7 +24,6 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -45,6 +39,11 @@ import java.util.function.Consumer;
 import java.util.function.IntConsumer;
 import java.util.function.LongConsumer;
 import java.util.logging.Logger;
+
+import javax.swing.JOptionPane;
+import javax.xml.bind.DatatypeConverter;
+
+import jgnash.util.NotNull;
 
 /**
  * Boot loader used to download platform specific OpenJFX files and place them in the LIB directory.
@@ -70,17 +69,17 @@ public class BootLoader {
     private static final int BUFFER_SIZE = 4096;
 
     // download them all
-    private static final String[] JARS = new String[]{"base", "controls", "fxml", "graphics", "media", "swing", "web"};
+    private static final String[] JARS = new String[] { "base", "controls", "fxml", "graphics", "media", "swing", "web" };
 
     public static boolean doFilesExist() {
-        String libPath = getLibPath();
+        final String libPath = getLibPath();
 
         boolean result = true;
 
         final String pathSpec = libPath + SEPARATOR + FILE_PATTERN;
 
         for (final String fxJar : JARS) {
-            Path path = Paths.get(MessageFormat.format(pathSpec, fxJar, JFX_VERSION, OS));
+            final Path path = Paths.get(MessageFormat.format(pathSpec, fxJar, JFX_VERSION, OS));
             if (!Files.exists(path)) {
                 result = false;
                 break;
@@ -96,8 +95,7 @@ public class BootLoader {
         // folder.
         // https://stackoverflow.com/questions/320542/how-to-get-the-path-of-a-running-jar-file?noredirect=1&lq=1
         try {
-            return new File(BootLoader.class.getProtectionDomain().getCodeSource().getLocation().toURI())
-                           .getParentFile().getPath();
+            return new File(BootLoader.class.getProtectionDomain().getCodeSource().getLocation().toURI()).getParentFile().getPath();
         } catch (final URISyntaxException e) {
             throw new RuntimeException("Unable to determine lib path fpr bootloader");
         }
@@ -126,7 +124,7 @@ public class BootLoader {
         try {
             final long completeDownloadSize = getTotalDownloadSize();
 
-            Files.createDirectories(lib);   // create the directory if needed
+            Files.createDirectories(lib); // create the directory if needed
 
             final String spec = MAVEN_REPO + "javafx-{0}/{1}/" + FILE_PATTERN;
             final String pathSpec = lib.toString() + SEPARATOR + FILE_PATTERN;
@@ -136,20 +134,20 @@ public class BootLoader {
 
                 @Override
                 public void accept(final long value) {
-                    totalCounts += value;
-                    percentCompleteConsumer.accept((int) (((double) totalCounts / (double) completeDownloadSize) * 100));
+                    this.totalCounts += value;
+                    percentCompleteConsumer.accept((int) (((double) this.totalCounts / (double) completeDownloadSize) * 100));
                 }
             };
 
             for (final String fxJar : JARS) {
-                URL url = new URL(MessageFormat.format(spec, fxJar, JFX_VERSION, OS));
-                Path path = Paths.get(MessageFormat.format(pathSpec, fxJar, JFX_VERSION, OS));
+                final URL url = new URL(MessageFormat.format(spec, fxJar, JFX_VERSION, OS));
+                final Path path = Paths.get(MessageFormat.format(pathSpec, fxJar, JFX_VERSION, OS));
 
                 if (!Files.exists(path)) {
                     fileNameConsumer.accept(url.toExternalForm());
 
                     try {
-                        boolean downloadResult = downloadFile(url, path, countConsumer);
+                        final boolean downloadResult = downloadFile(url, path, countConsumer);
 
                         if (!downloadResult) {
                             result = false;
@@ -169,12 +167,13 @@ public class BootLoader {
         return result;
     }
 
-    private static long getTotalDownloadSize() throws MalformedURLException {
+    private static long getTotalDownloadSize()
+        throws MalformedURLException {
         long size = 0;
 
-        for (String fxJar : JARS) {
+        for (final String fxJar : JARS) {
             final String spec = MAVEN_REPO + "javafx-{0}/{1}/" + FILE_PATTERN;
-            URL url = new URL(MessageFormat.format(spec, fxJar, JFX_VERSION, OS));
+            final URL url = new URL(MessageFormat.format(spec, fxJar, JFX_VERSION, OS));
 
             size += getFileDownloadSize(url);
         }
@@ -186,7 +185,7 @@ public class BootLoader {
         long length = 0;
 
         try {
-            final HttpURLConnection httpConnection = (HttpURLConnection) (source.openConnection());
+            final java.net.HttpURLConnection httpConnection = (java.net.HttpURLConnection) (source.openConnection());
             length = httpConnection.getContentLength();
 
             httpConnection.disconnect();
@@ -204,21 +203,22 @@ public class BootLoader {
         JOptionPane.showMessageDialog(null, message, title, JOptionPane.ERROR_MESSAGE);
     }
 
-    private static boolean downloadFile(final URL source, final Path dest, final LongConsumer countConsumer) throws IOException {
-        final Logger logger = Logger.getLogger(BootLoader.class.getName());
+    private static boolean downloadFile(final URL source, final Path dest, final LongConsumer countConsumer)
+        throws IOException {
+        final Logger logger = Logger.getLogger(jgnash.bootloader.BootLoader.class.getName());
         boolean result = true;
 
         logger.info("Downloading " + source.toExternalForm() + " to " + dest.toString());
 
         String md5 = "";
 
-        HttpURLConnection httpConnection = (HttpURLConnection) (source.openConnection());
+        final java.net.HttpURLConnection httpConnection = (java.net.HttpURLConnection) (source.openConnection());
 
         try (final BufferedInputStream in = new BufferedInputStream(httpConnection.getInputStream());
-             final BufferedOutputStream bout = new BufferedOutputStream(new CountingFileOutputStream(dest.toString(),
-                     countConsumer), BUFFER_SIZE)) {
+            final BufferedOutputStream bout = new BufferedOutputStream(new CountingFileOutputStream(dest.toString(), countConsumer),
+                BUFFER_SIZE)) {
 
-            byte[] data = new byte[BUFFER_SIZE];
+            final byte[] data = new byte[BUFFER_SIZE];
 
             int x;
             while ((x = in.read(data, 0, BUFFER_SIZE)) >= 0) {
@@ -241,7 +241,7 @@ public class BootLoader {
         final Path md5Dest = Files.createTempFile("", ".md5");
 
         try (final ReadableByteChannel readableByteChannel = Channels.newChannel(md5Source.openStream());
-             final FileOutputStream fileOutputStream = new FileOutputStream(md5Dest.toString())) {
+            final FileOutputStream fileOutputStream = new FileOutputStream(md5Dest.toString())) {
             fileOutputStream.getChannel().transferFrom(readableByteChannel, 0, Long.MAX_VALUE);
         } catch (final Exception e) {
             e.printStackTrace();
@@ -279,21 +279,24 @@ public class BootLoader {
         }
 
         @Override
-        public void write(final int idx) throws IOException {
+        public void write(final int idx)
+            throws IOException {
             super.write(idx);
-            countConsumer.accept(1);
+            this.countConsumer.accept(1);
         }
 
         @Override
-        public void write(final byte[] b) throws IOException {
+        public void write(final byte[] b)
+            throws IOException {
             super.write(b);
-            countConsumer.accept(b.length);
+            this.countConsumer.accept(b.length);
         }
 
         @Override
-        public void write(final byte[] b, final int off, final int len) throws IOException {
+        public void write(final byte[] b, final int off, final int len)
+            throws IOException {
             super.write(b, off, len);
-            countConsumer.accept(len);
+            this.countConsumer.accept(len);
         }
     }
 }

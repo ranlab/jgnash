@@ -28,7 +28,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.ResourceBundle;
@@ -51,6 +50,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import org.apache.commons.collections4.ListUtils;
 
 import jgnash.engine.attachment.AttachmentManager;
 import jgnash.engine.budget.Budget;
@@ -80,8 +81,6 @@ import jgnash.time.DateUtils;
 import jgnash.util.DefaultDaemonThreadFactory;
 import jgnash.util.NotNull;
 import jgnash.util.Nullable;
-
-import org.apache.commons.collections4.ListUtils;
 
 /**
  * Engine class
@@ -160,7 +159,7 @@ public class Engine {
     /**
      * All engine instances will share the same message bus.
      */
-    private MessageBus messageBus;
+    private final MessageBus messageBus;
 
     /**
      * Cached for performance.
@@ -180,56 +179,65 @@ public class Engine {
     private String accountSeparator = null;
 
     public Engine(final EngineDAO eDAO, final LockManager lockManager, final AttachmentManager attachmentManager, final String name) {
-        Objects.requireNonNull(name, "The engine name may not be null");
-        Objects.requireNonNull(eDAO, "The engineDAO may not be null");
+        java.util.Objects.requireNonNull(name, "The engine name may not be null");
+        java.util.Objects.requireNonNull(eDAO, "The engineDAO may not be null");
 
-        logger.log(Level.INFO, "Release {0}.{1}", new Object[]{CURRENT_MAJOR_VERSION, CURRENT_MINOR_VERSION});
+        logger.log(Level.INFO, "Release {0}.{1}", new Object[] { CURRENT_MAJOR_VERSION, CURRENT_MINOR_VERSION });
+        logger.log(Level.INFO, "Size stored Objects {0}", new Object[] { eDAO.getStoredObjects().size() });
 
         this.attachmentManager = attachmentManager;
         this.eDAO = eDAO;
         this.name = name;
 
         // Generate lock
-        dataLock = lockManager.getLock(BIG_LOCK);
+        this.dataLock = lockManager.getLock(BIG_LOCK);
 
-        messageBus = MessageBus.getInstance(name);
+        this.messageBus = MessageBus.getInstance(name);
 
-        initialize();
+        this.initialize();
 
-        checkAndCorrect();
+        this.checkAndCorrect();
 
-        backgroundExecutorService = new ScheduledThreadPoolExecutor(1,
-                new DefaultDaemonThreadFactory("Engine Background Executor"));
-        backgroundExecutorService.setRemoveOnCancelPolicy(true);
-        backgroundExecutorService.setExecuteExistingDelayedTasksAfterShutdownPolicy(false);
+        this.backgroundExecutorService = new ScheduledThreadPoolExecutor(1, new DefaultDaemonThreadFactory("Engine Background Executor"));
+        this.backgroundExecutorService.setRemoveOnCancelPolicy(true);
+        this.backgroundExecutorService.setExecuteExistingDelayedTasksAfterShutdownPolicy(false);
 
         // run trash cleanup every 5 minutes 45 seconds after startup
-        backgroundExecutorService.scheduleWithFixedDelay(() -> {
+        this.backgroundExecutorService.scheduleWithFixedDelay(() -> {
             if (!Thread.currentThread().isInterrupted()) {
-                emptyTrash();
+                this.emptyTrash();
             }
         }, 45, 5L * 60L, TimeUnit.SECONDS);
 
-        backgroundExecutorService.schedule(() -> {
+        this.backgroundExecutorService.schedule(() -> {
             if (UpdateFactory.getUpdateOnStartup()) {
                 // don't update on weekends unless needed
-                if (UpdateFactory.shouldAutomaticUpdateOccur(getConfig().getLastSecuritiesUpdateTimestamp())) {
-                    startSecuritiesUpdate(SCHEDULED_DELAY);
+                if (UpdateFactory.shouldAutomaticUpdateOccur(this.getConfig().getLastSecuritiesUpdateTimestamp())) {
+                    this.startSecuritiesUpdate(SCHEDULED_DELAY);
                 }
             }
         }, 30, TimeUnit.SECONDS);
 
-        backgroundExecutorService.schedule(() -> {
+        this.backgroundExecutorService.schedule(() -> {
             if (CurrencyUpdateFactory.getUpdateOnStartup()) {
-                startExchangeRateUpdate(SCHEDULED_DELAY);
+                this.startExchangeRateUpdate(SCHEDULED_DELAY);
             }
         }, 30, TimeUnit.SECONDS);
     }
 
+    /**
+     * A file is dirty if one of DAOs ist dirty.
+     * @return
+     */
     boolean isFileDirty() {
-        return eDAO.isDirty() || getAccountDAO().isDirty() || getBudgetDAO().isDirty() || getCommodityDAO().isDirty()
-                       || getConfigDAO().isDirty() || getReminderDAO().isDirty() || getTransactionDAO().isDirty()
-                       || getTrashDAO().isDirty();
+        return this.eDAO.isDirty() //
+            || this.getAccountDAO().isDirty()
+            || this.getBudgetDAO().isDirty()
+            || this.getCommodityDAO().isDirty()
+            || this.getConfigDAO().isDirty()
+            || this.getReminderDAO().isDirty()
+            || this.getTransactionDAO().isDirty()
+            || this.getTrashDAO().isDirty();
     }
 
     /**
@@ -254,8 +262,10 @@ public class Engine {
      * @param localDate    {@code LocalDate} we want a market price for
      * @return The best market price or a value of 0 if no history or transactions exist
      */
-    public static BigDecimal getMarketPrice(final Collection<Transaction> transactions, final SecurityNode node,
-                                            final CurrencyNode baseCurrency, final LocalDate localDate) {
+    public static BigDecimal getMarketPrice(final Collection<Transaction> transactions,
+        final SecurityNode node,
+        final CurrencyNode baseCurrency,
+        final LocalDate localDate) {
 
         // Search for the exact history node record
         Optional<SecurityHistoryNode> optional = node.getHistoryNode(localDate);
@@ -271,14 +281,14 @@ public class Engine {
 
         optional = node.getClosestHistoryNode(localDate);
 
-        if (optional.isPresent()) {    // Closest option so far
+        if (optional.isPresent()) { // Closest option so far
             price = optional.get().getPrice();
             priceDate = optional.get().getLocalDate();
         }
 
         // Compare against transactions
         for (final Transaction t : transactions) {
-            if (t instanceof InvestmentTransaction && ((InvestmentTransaction) t).getSecurityNode() == node) {
+            if ((t instanceof InvestmentTransaction) && (((InvestmentTransaction) t).getSecurityNode() == node)) {
 
                 // The transaction date must be closer than the history node, but not newer than the request date
                 if ((t.getLocalDate().isAfter(priceDate) && t.getLocalDate().isBefore(localDate)) || t.getLocalDate().equals(localDate)) {
@@ -286,7 +296,7 @@ public class Engine {
                     // Check for a dividend, etc that may have returned a price of zero
                     final BigDecimal p = ((InvestmentTransaction) t).getPrice();
 
-                    if (p != null && p.compareTo(BigDecimal.ZERO) > 0) {
+                    if ((p != null) && (p.compareTo(BigDecimal.ZERO) > 0)) {
                         price = p;
                         priceDate = t.getLocalDate();
                     }
@@ -373,8 +383,8 @@ public class Engine {
      * @param delay delay in seconds
      */
     public void startExchangeRateUpdate(final int delay) {
-        backgroundExecutorService.schedule(new BackgroundCallable(new CurrencyUpdateFactory.UpdateExchangeRatesCallable()), delay,
-                TimeUnit.SECONDS);
+        this.backgroundExecutorService
+            .schedule(new BackgroundCallable(new CurrencyUpdateFactory.UpdateExchangeRatesCallable()), delay, TimeUnit.SECONDS);
     }
 
     /**
@@ -383,10 +393,9 @@ public class Engine {
      * @param delay delay in seconds
      */
     public void startSecuritiesUpdate(final int delay) {
-        final List<BackgroundCallable> callables = new ArrayList<>();
+        final java.util.List<BackgroundCallable> callables = new ArrayList<>();
 
-        getSecurities().stream().filter(securityNode ->
-                                                securityNode.getQuoteSource() != QuoteSource.NONE).forEach(securityNode -> { // failure will occur if source is not defined
+        this.getSecurities().stream().filter(securityNode -> securityNode.getQuoteSource() != QuoteSource.NONE).forEach(securityNode -> { // failure will occur if source is not defined
 
             callables.add(new BackgroundCallable(new UpdateFactory.UpdateSecurityNodeCallable(securityNode)));
             callables.add(new BackgroundCallable(new UpdateFactory.UpdateSecurityNodeEventsCallable(securityNode)));
@@ -396,7 +405,7 @@ public class Engine {
         new SecuritiesUpdateRunnable(callables, delay).start();
 
         // Save the last update
-        config.setLastSecuritiesUpdateTimestamp(LocalDateTime.now());
+        this.config.setLastSecuritiesUpdateTimestamp(LocalDateTime.now());
     }
 
     /**
@@ -404,52 +413,52 @@ public class Engine {
      */
     private void initialize() {
 
-        dataLock.writeLock().lock();
+        this.dataLock.writeLock().lock();
 
         try {
 
             // ask the Config object to perform any needed configuration
-            getConfig().initialize();
+            this.getConfig().initialize();
 
             // build the exchange rate storage object
-            exchangeRateDAO = new ExchangeRateDAO(getCommodityDAO());
+            this.exchangeRateDAO = new ExchangeRateDAO(this.getCommodityDAO());
 
             // assign the exchange rate store to the currencies
-            for (final CurrencyNode node : getCurrencies()) {
-                node.setExchangeRateDAO(exchangeRateDAO);
+            for (final CurrencyNode node : this.getCurrencies()) {
+                node.setExchangeRateDAO(this.exchangeRateDAO);
             }
 
             // obtain or establish the root account
-            RootAccount root = getRootAccount();
+            RootAccount root = this.getRootAccount();
 
             if (root == null) {
-                CurrencyNode node = getDefaultCurrency();
+                CurrencyNode node = this.getDefaultCurrency();
 
                 if (node == null) {
                     node = DefaultCurrencies.getDefault();
-                    node.setExchangeRateDAO(exchangeRateDAO);
+                    node.setExchangeRateDAO(this.exchangeRateDAO);
 
-                    addCurrency(node); // force the node to persisted
+                    this.addCurrency(node); // force the node to persisted
                 }
 
                 root = new RootAccount(node);
-                root.setName(rb.getString("Name.Root"));
-                root.setDescription(rb.getString("Name.Root"));
+                root.setName(this.rb.getString("Name.Root"));
+                root.setDescription(this.rb.getString("Name.Root"));
 
                 logInfo("Creating RootAccount");
 
-                if (!getAccountDAO().addRootAccount(root)) {
+                if (!this.getAccountDAO().addRootAccount(root)) {
                     logSevere("Was not able to add the root account");
                     throw new EngineException("Was not able to add the root account");
                 }
 
-                if (getDefaultCurrency() == null) {
-                    setDefaultCurrency(node);
+                if (this.getDefaultCurrency() == null) {
+                    this.setDefaultCurrency(node);
                 }
             }
 
         } finally {
-            dataLock.writeLock().unlock();
+            this.dataLock.writeLock().unlock();
         }
 
         logInfo("Engine initialization is complete");
@@ -459,129 +468,157 @@ public class Engine {
      * Corrects minor issues with a database that may occur because of prior bugs or file format upgrades.
      */
     private void checkAndCorrect() {
-        dataLock.writeLock().lock();
+        this.dataLock.writeLock().lock();
 
         try {
+            final java.util.List<Account> accountWithoutTypeList = this
+                .getAccountList()
+                    .stream()
+                    .filter(account -> account.getAccountType() == null)
+                    .collect(Collectors.toList());
+            if (accountWithoutTypeList.size() > 0) {
+                logWarning(java.lang.String.format("%d Account without AccountType", accountWithoutTypeList.size()));
+                accountWithoutTypeList.stream().forEach(account -> account.setAccountType(jgnash.engine.AccountType.EXPENSE));
+            }
+
+            final java.util.List<Account> accountWithoutCurrencyList = this
+                .getAccountList()
+                    .stream()
+                    .filter(account -> account.getCurrencyNode() == null)
+                    .collect(Collectors.toList());
+            if (accountWithoutCurrencyList.size() > 0) {
+                logWarning(java.lang.String.format("%d Account without CurrencyNode", accountWithoutCurrencyList.size()));
+                accountWithoutTypeList.stream().forEach(account -> account.setCurrencyNode(this.getDefaultCurrency()));
+            }
+
             // check and correct multiple root accounts from old files... there are still a few.
-            List<Account> accountList = getAccountList().stream().filter(account -> account.getAccountType()
-                                                                                            .equals(AccountType.ROOT)).collect(Collectors.toList());
+            final java.util.List<Account> accountList = this
+                .getAccountList()
+                    .stream()
+                    .filter(account -> account.getAccountType().equals(AccountType.ROOT))
+                    .collect(Collectors.toList());
 
             if (accountList.size() > 1) {
-                for (Account account : accountList) {
+                for (final Account account : accountList) {
                     if (account.getChildCount() == 0) {
-                        removeAccount(account);
+                        this.removeAccount(account);
                         logWarning("Removed an extra / empty root account");
                     }
                 }
             }
 
-            final List<Config> list = eDAO.getStoredObjects(Config.class);
+            final java.util.List<Config> list = this.eDAO.getStoredObjects(Config.class);
             if (list.size() > 1) {
                 // Delete all but the first found config object
                 for (int i = 1; i < list.size(); i++) {
                     logWarning("Removed an extra Config object");
-                    moveObjectToTrash(list.get(i));
+                    this.moveObjectToTrash(list.get(i));
                 }
             }
 
             // Transaction timestamps were updated for release 2.25
-            if (getConfig().getMinorFileFormatVersion() < 25 && getConfig().getMajorFileFormatVersion() < 3) {
+            if ((this.getConfig().getMinorFileFormatVersion() < 25) && (this.getConfig().getMajorFileFormatVersion() < 3)) {
                 // Update transactions in chunks of 200
-                ListUtils.partition(getTransactions(), 200).forEach(eDAO::bulkUpdate);
+                ListUtils.partition(this.getTransactions(), 200).forEach(this.eDAO::bulkUpdate);
             }
 
             // update the file version if it is not current
-            if (getConfig().getMajorFileFormatVersion() != CURRENT_MAJOR_VERSION
-                        || getConfig().getMinorFileFormatVersion() != CURRENT_MINOR_VERSION) {
+            if ((this.getConfig().getMajorFileFormatVersion() != CURRENT_MAJOR_VERSION)
+                || (this.getConfig().getMinorFileFormatVersion() != CURRENT_MINOR_VERSION)) {
 
-                final Config localConfig = getConfig();
+                final Config localConfig = this.getConfig();
                 localConfig.updateFileVersion();
-                getConfigDAO().update(localConfig);
+                this.getConfigDAO().update(localConfig);
             }
+        } catch (final java.lang.Exception ex) {
+            logSevere(ex.getMessage());
         } finally {
-            dataLock.writeLock().unlock();
+            this.dataLock.writeLock().unlock();
         }
     }
 
     private void clearObsoleteExchangeRates() {
-        getCommodityDAO().getExchangeRates().stream()
-                .filter(rate -> getBaseCurrencies(rate.getRateId()).length == 0)
+        this
+            .getCommodityDAO()
+                .getExchangeRates()
+                .stream()
+                .filter(rate -> this.getBaseCurrencies(rate.getRateId()).length == 0)
                 .forEach(this::removeExchangeRate);
     }
 
     private void removeExchangeRate(final ExchangeRate rate) {
-        dataLock.writeLock().lock();
+        this.dataLock.writeLock().lock();
 
         try {
             for (final ExchangeRateHistoryNode node : rate.getHistory()) {
-                removeExchangeRateHistory(rate, node);
+                this.removeExchangeRateHistory(rate, node);
             }
-            moveObjectToTrash(rate);
+            this.moveObjectToTrash(rate);
         } finally {
-            dataLock.writeLock().unlock();
+            this.dataLock.writeLock().unlock();
         }
     }
 
     void stopBackgroundServices() {
         logInfo("Controlled engine shutdown initiated");
 
-        shutDownAndWait(backgroundExecutorService);
+        shutDownAndWait(this.backgroundExecutorService);
 
         logInfo("Background services have been stopped");
     }
 
     void shutdown() {
-        eDAO.shutdown();
+        this.eDAO.shutdown();
     }
 
     public String getName() {
-        return name;
+        return this.name;
     }
 
     private AccountDAO getAccountDAO() {
-        return eDAO.getAccountDAO();
+        return this.eDAO.getAccountDAO();
     }
 
     private BudgetDAO getBudgetDAO() {
-        return eDAO.getBudgetDAO();
+        return this.eDAO.getBudgetDAO();
     }
 
     private CommodityDAO getCommodityDAO() {
-        return eDAO.getCommodityDAO();
+        return this.eDAO.getCommodityDAO();
     }
 
     private ConfigDAO getConfigDAO() {
-        return eDAO.getConfigDAO();
+        return this.eDAO.getConfigDAO();
     }
 
     private RecurringDAO getReminderDAO() {
-        return eDAO.getRecurringDAO();
+        return this.eDAO.getRecurringDAO();
     }
 
     private TransactionDAO getTransactionDAO() {
-        return eDAO.getTransactionDAO();
+        return this.eDAO.getTransactionDAO();
     }
 
     private TrashDAO getTrashDAO() {
-        return eDAO.getTrashDAO();
+        return this.eDAO.getTrashDAO();
     }
 
     private boolean moveObjectToTrash(final Object object) {
         boolean result = false;
 
-        dataLock.writeLock().lock();
+        this.dataLock.writeLock().lock();
 
         try {
             if (object instanceof StoredObject) {
-                getTrashDAO().add(new TrashObject((StoredObject) object));
-            } else {    // simple object with an annotated JPA entity id of type long is assumed
-                getTrashDAO().addEntityTrash(object);
+                this.getTrashDAO().add(new TrashObject((StoredObject) object));
+            } else { // simple object with an annotated JPA entity id of type long is assumed
+                this.getTrashDAO().addEntityTrash(object);
             }
             result = true;
         } catch (final Exception ex) {
             logger.log(Level.SEVERE, ex.getLocalizedMessage(), ex);
         } finally {
-            dataLock.writeLock().unlock();
+            this.dataLock.writeLock().unlock();
         }
 
         return result;
@@ -591,17 +628,16 @@ public class Engine {
      * Empty the trash if any objects are older than the defined time.
      */
     private void emptyTrash() {
-        if (backGroundCounter.incrementAndGet() == 1) {
-            messageBus.fireEvent(new Message(MessageChannel.SYSTEM, ChannelEvent.BACKGROUND_PROCESS_STARTED,
-                    Engine.this));
+        if (this.backGroundCounter.incrementAndGet() == 1) {
+            this.messageBus.fireEvent(new Message(MessageChannel.SYSTEM, ChannelEvent.BACKGROUND_PROCESS_STARTED, Engine.this));
         }
 
-        dataLock.writeLock().lock();
+        this.dataLock.writeLock().lock();
 
         try {
             logger.info("Checking for trash");
 
-            final List<TrashObject> trash = getTrashDAO().getTrashObjects();
+            final java.util.List<TrashObject> trash = this.getTrashDAO().getTrashObjects();
 
             /* always sort by the timestamp of the trash object to prevent
              * foreign key removal exceptions when multiple related accounts
@@ -612,14 +648,15 @@ public class Engine {
                 logger.info("No trash was found");
             }
 
-            trash.stream().filter(o -> ChronoUnit.MILLIS.between(o.getDate(), LocalDateTime.now()) >= MAXIMUM_TRASH_AGE)
-                    .forEach(o -> getTrashDAO().remove(o));
+            trash
+                .stream()
+                    .filter(o -> ChronoUnit.MILLIS.between(o.getDate(), LocalDateTime.now()) >= MAXIMUM_TRASH_AGE)
+                    .forEach(o -> this.getTrashDAO().remove(o));
         } finally {
-            dataLock.writeLock().unlock();
+            this.dataLock.writeLock().unlock();
 
-            if (backGroundCounter.decrementAndGet() == 0) {
-                messageBus.fireEvent(new Message(MessageChannel.SYSTEM, ChannelEvent.BACKGROUND_PROCESS_STOPPED,
-                        Engine.this));
+            if (this.backGroundCounter.decrementAndGet() == 0) {
+                this.messageBus.fireEvent(new Message(MessageChannel.SYSTEM, ChannelEvent.BACKGROUND_PROCESS_STOPPED, Engine.this));
             }
         }
     }
@@ -652,8 +689,8 @@ public class Engine {
         boolean result = false;
 
         // make sure the description has been set
-        if (reminder.getDescription() != null && !reminder.getDescription().isBlank()) {
-            result = getReminderDAO().addReminder(reminder);
+        if ((reminder.getDescription() != null) && !reminder.getDescription().isBlank()) {
+            result = this.getReminderDAO().addReminder(reminder);
         }
 
         Message message;
@@ -664,7 +701,7 @@ public class Engine {
         }
 
         message.setObject(MessageProperty.REMINDER, reminder);
-        messageBus.fireEvent(message);
+        this.messageBus.fireEvent(message);
 
         return result;
     }
@@ -672,17 +709,17 @@ public class Engine {
     public boolean removeReminder(final Reminder reminder) {
         boolean result = false;
 
-        if (moveObjectToTrash(reminder)) {
+        if (this.moveObjectToTrash(reminder)) {
 
             if (reminder.getTransaction() != null) {
-                moveObjectToTrash(reminder.getTransaction());
+                this.moveObjectToTrash(reminder.getTransaction());
                 reminder.setTransaction(null);
             }
 
-            Message message = new Message(MessageChannel.REMINDER, ChannelEvent.REMINDER_REMOVE, this);
+            final Message message = new Message(MessageChannel.REMINDER, ChannelEvent.REMINDER_REMOVE, this);
 
             message.setObject(MessageProperty.REMINDER, reminder);
-            messageBus.fireEvent(message);
+            this.messageBus.fireEvent(message);
 
             result = true;
         }
@@ -695,17 +732,17 @@ public class Engine {
      *
      * @return List of reminders
      */
-    public List<Reminder> getReminders() {
-        return getReminderDAO().getReminderList();
+    public java.util.List<Reminder> getReminders() {
+        return this.getReminderDAO().getReminderList();
     }
 
     public Reminder getReminderByUuid(final UUID uuid) {
-        return getReminderDAO().getReminderByUuid(uuid);
+        return this.getReminderDAO().getReminderByUuid(uuid);
     }
 
-    public List<PendingReminder> getPendingReminders() {
+    public java.util.List<PendingReminder> getPendingReminders() {
         final ArrayList<PendingReminder> pendingList = new ArrayList<>();
-        final List<Reminder> list = getReminders();
+        final java.util.List<Reminder> list = this.getReminders();
         final LocalDate now = LocalDate.now(); // today's date
 
         for (final Reminder r : list) {
@@ -733,9 +770,9 @@ public class Engine {
         return pendingList;
     }
 
-    public static PendingReminder getPendingReminder(@NotNull Reminder reminder) {
+    public static PendingReminder getPendingReminder(@NotNull final Reminder reminder) {
         final RecurringIterator ri = reminder.getIterator();
-        LocalDate next = ri.next();
+        final LocalDate next = ri.next();
 
         if (next != null) {
             return new PendingReminder(reminder, next);
@@ -753,18 +790,18 @@ public class Engine {
 
                 // Update to the commit date (commit date can be modified)
                 t.setDate(pending.getCommitDate());
-                addTransaction(t);
+                this.addTransaction(t);
             }
             // update the last fired date... date returned from the iterator
             reminder.setLastDate(); // mark as complete
-            if (!updateReminder(reminder)) {
-                logSevere(rb.getString("Message.Error.ReminderUpdate"));
+            if (!this.updateReminder(reminder)) {
+                logSevere(this.rb.getString("Message.Error.ReminderUpdate"));
             }
         });
     }
 
     public <T extends StoredObject> T getStoredObjectByUuid(final Class<T> tClass, final UUID uuid) {
-        return eDAO.getObjectByUuid(tClass, uuid);
+        return this.eDAO.getObjectByUuid(tClass, uuid);
     }
 
     /**
@@ -776,11 +813,11 @@ public class Engine {
      * @see StoredObjectComparator
      */
     public Collection<StoredObject> getStoredObjects() {
-        dataLock.readLock().lock();
+        this.dataLock.readLock().lock();
 
         try {
 
-            List<StoredObject> objects = eDAO.getStoredObjects();
+            final java.util.List<StoredObject> objects = this.eDAO.getStoredObjects();
 
             // Filter out objects to be removed
             objects.removeIf(TrashObject.class::isInstance);
@@ -789,7 +826,7 @@ public class Engine {
 
             return objects;
         } finally {
-            dataLock.readLock().unlock();
+            this.dataLock.readLock().unlock();
         }
     }
 
@@ -807,7 +844,7 @@ public class Engine {
             logSevere("Commodity uuid was not valid");
         }
 
-        if (node.getSymbol() == null || node.getSymbol().isEmpty()) {
+        if ((node.getSymbol() == null) || node.getSymbol().isEmpty()) {
             result = false;
             logSevere("Commodity symbol was not valid");
         }
@@ -817,13 +854,13 @@ public class Engine {
             logSevere(COMMODITY + node + " had a scale less than zero");
         }
 
-        if (node instanceof SecurityNode && ((SecurityNode) node).getReportedCurrencyNode() == null) {
+        if ((node instanceof SecurityNode) && (((SecurityNode) node).getReportedCurrencyNode() == null)) {
             result = false;
             logSevere(COMMODITY + node + " was not assigned a currency");
         }
 
         // ensure the UUID being used is unique
-        if (eDAO.getObjectByUuid(CommodityNode.class, node.getUuid()) != null) {
+        if (this.eDAO.getObjectByUuid(CommodityNode.class, node.getUuid()) != null) {
             result = false;
             logSevere(COMMODITY + node + " was not unique");
         }
@@ -840,22 +877,22 @@ public class Engine {
      * @return {@code true} if the add it successful
      */
     public boolean addCurrency(final CurrencyNode node) {
-        dataLock.writeLock().lock();
+        this.dataLock.writeLock().lock();
 
         try {
-            boolean status = isCommodityNodeValid(node);
+            boolean status = this.isCommodityNodeValid(node);
 
             if (status) {
-                node.setExchangeRateDAO(exchangeRateDAO);
+                node.setExchangeRateDAO(this.exchangeRateDAO);
 
-                if (getCurrency(node.getSymbol()) != null) {
+                if (this.getCurrency(node.getSymbol()) != null) {
                     logger.log(Level.INFO, "Prevented addition of a duplicate CurrencyNode: {0}", node.getSymbol());
                     status = false;
                 }
             }
 
             if (status) {
-                status = getCommodityDAO().addCommodity(node);
+                status = this.getCommodityDAO().addCommodity(node);
                 logger.log(Level.FINE, "Adding: {0}", node);
             }
 
@@ -867,11 +904,11 @@ public class Engine {
             }
 
             message.setObject(MessageProperty.COMMODITY, node);
-            messageBus.fireEvent(message);
+            this.messageBus.fireEvent(message);
 
             return status;
         } finally {
-            dataLock.writeLock().unlock();
+            this.dataLock.writeLock().unlock();
         }
     }
 
@@ -882,7 +919,7 @@ public class Engine {
      * @param currencyNode {@code CurrencyNode} to link
      */
     void attachCurrencyNode(final CurrencyNode currencyNode) {
-        currencyNode.setExchangeRateDAO(exchangeRateDAO);
+        currencyNode.setExchangeRateDAO(this.exchangeRateDAO);
     }
 
     /**
@@ -894,20 +931,20 @@ public class Engine {
      * @return {@code true} if the add it successful
      */
     public boolean addSecurity(final SecurityNode node) {
-        dataLock.writeLock().lock();
+        this.dataLock.writeLock().lock();
 
         try {
-            boolean status = isCommodityNodeValid(node);
+            boolean status = this.isCommodityNodeValid(node);
 
             if (status) {
-                if (getSecurity(node.getSymbol()) != null) {
+                if (this.getSecurity(node.getSymbol()) != null) {
                     logger.log(Level.INFO, "Prevented addition of a duplicate SecurityNode: {0}", node.getSymbol());
                     status = false;
                 }
             }
 
             if (status) {
-                status = getCommodityDAO().addCommodity(node);
+                status = this.getCommodityDAO().addCommodity(node);
                 logger.log(Level.FINE, "Adding: {0}", node);
             }
 
@@ -919,11 +956,11 @@ public class Engine {
             }
 
             message.setObject(MessageProperty.COMMODITY, node);
-            messageBus.fireEvent(message);
+            this.messageBus.fireEvent(message);
 
             return status;
         } finally {
-            dataLock.writeLock().unlock();
+            this.dataLock.writeLock().unlock();
         }
     }
 
@@ -936,12 +973,12 @@ public class Engine {
      * @return <tt>true</tt> if successful
      */
     public boolean addSecurityHistory(@NotNull final SecurityNode node, @NotNull final SecurityHistoryNode hNode) {
-        dataLock.writeLock().lock();
+        this.dataLock.writeLock().lock();
 
         try {
             // Remove old history of the same date if it exists
             if (node.contains(hNode.getLocalDate())) {
-                if (!removeSecurityHistory(node, hNode.getLocalDate())) {
+                if (!this.removeSecurityHistory(node, hNode.getLocalDate())) {
                     logSevere(ResourceUtils.getString("Message.Error.HistRemoval", hNode.getLocalDate(), node.getSymbol()));
                     return false;
                 }
@@ -950,24 +987,24 @@ public class Engine {
             boolean status = node.addHistoryNode(hNode);
 
             if (status) {
-                status = getCommodityDAO().addSecurityHistory(node, hNode);
+                status = this.getCommodityDAO().addSecurityHistory(node, hNode);
             }
 
             Message message;
 
             if (status) {
-                clearCachedAccountBalance(node);
+                this.clearCachedAccountBalance(node);
                 message = new Message(MessageChannel.COMMODITY, ChannelEvent.SECURITY_HISTORY_ADD, this);
             } else {
                 message = new Message(MessageChannel.COMMODITY, ChannelEvent.SECURITY_HISTORY_ADD_FAILED, this);
             }
 
             message.setObject(MessageProperty.COMMODITY, node);
-            messageBus.fireEvent(message);
+            this.messageBus.fireEvent(message);
 
             return status;
         } finally {
-            dataLock.writeLock().unlock();
+            this.dataLock.writeLock().unlock();
         }
     }
 
@@ -980,36 +1017,38 @@ public class Engine {
      * @return <tt>true</tt> if successful
      */
     public boolean addSecurityHistoryEvent(@NotNull final SecurityNode node, @NotNull final SecurityHistoryEvent historyEvent) {
-        dataLock.writeLock().lock();
+        this.dataLock.writeLock().lock();
 
         try {
 
             // Remove old history event if it exists, equality is used to work around hibernate optimizations
             // A defensive copy of the old events is used to prevent concurrent modification errors
-            new HashSet<>(node.getHistoryEvents()).stream().filter(event -> event.equals(historyEvent))
-                    .forEach(event -> removeSecurityHistoryEvent(node, historyEvent));
+            new HashSet<>(node.getHistoryEvents())
+                .stream()
+                    .filter(event -> event.equals(historyEvent))
+                    .forEach(event -> this.removeSecurityHistoryEvent(node, historyEvent));
 
             boolean status = node.addSecurityHistoryEvent(historyEvent);
 
             if (status) {
-                status = getCommodityDAO().addSecurityHistoryEvent(node, historyEvent);
+                status = this.getCommodityDAO().addSecurityHistoryEvent(node, historyEvent);
             }
 
             Message message;
 
             if (status) {
-                clearCachedAccountBalance(node);
+                this.clearCachedAccountBalance(node);
                 message = new Message(MessageChannel.COMMODITY, ChannelEvent.SECURITY_HISTORY_EVENT_ADD, this);
             } else {
                 message = new Message(MessageChannel.COMMODITY, ChannelEvent.SECURITY_HISTORY_EVENT_ADD_FAILED, this);
             }
 
             message.setObject(MessageProperty.COMMODITY, node);
-            messageBus.fireEvent(message);
+            this.messageBus.fireEvent(message);
 
             return status;
         } finally {
-            dataLock.writeLock().unlock();
+            this.dataLock.writeLock().unlock();
         }
     }
 
@@ -1020,8 +1059,11 @@ public class Engine {
      * @return list of investment accounts
      */
     private Set<Account> getInvestmentAccountList(final SecurityNode node) {
-        return getInvestmentAccountList().parallelStream()
-                       .filter(account -> account.containsSecurity(node)).collect(Collectors.toSet());
+        return this
+            .getInvestmentAccountList()
+                .parallelStream()
+                .filter(account -> account.containsSecurity(node))
+                .collect(Collectors.toSet());
     }
 
     /**
@@ -1031,7 +1073,7 @@ public class Engine {
      * @param node SecurityNode that was changed
      */
     private void clearCachedAccountBalance(final SecurityNode node) {
-        getInvestmentAccountList(node).forEach(this::clearCachedAccountBalance);
+        this.getInvestmentAccountList(node).forEach(this::clearCachedAccountBalance);
     }
 
     /**
@@ -1041,43 +1083,43 @@ public class Engine {
      */
     private void clearCachedAccountBalance(final Account account) {
 
-        dataLock.writeLock().lock();
+        this.dataLock.writeLock().lock();
 
         try {
             account.clearCachedBalances();
 
             // force a persistence update if working as a client / server
-            if (eDAO.isRemote()) {
-                getAccountDAO().updateAccount(account);
+            if (this.eDAO.isRemote()) {
+                this.getAccountDAO().updateAccount(account);
             }
         } finally {
-            dataLock.writeLock().unlock();
+            this.dataLock.writeLock().unlock();
         }
 
-        if (account.getParent() != null && account.getParent().getAccountType() != AccountType.ROOT) {
-            clearCachedAccountBalance(account.getParent());
+        if ((account.getParent() != null) && (account.getParent().getAccountType() != AccountType.ROOT)) {
+            this.clearCachedAccountBalance(account.getParent());
         }
     }
 
     private CurrencyNode[] getBaseCurrencies(final String exchangeRateId) {
-        dataLock.readLock().lock();
+        this.dataLock.readLock().lock();
 
         try {
-            final List<CurrencyNode> currencies = getCurrencies();
+            final java.util.List<CurrencyNode> currencies = this.getCurrencies();
 
             Collections.sort(currencies);
             Collections.reverse(currencies);
 
             for (final CurrencyNode node1 : currencies) {
                 for (final CurrencyNode node2 : currencies) {
-                    if (node1 != node2 && buildExchangeRateId(node1, node2).equals(exchangeRateId)) {
-                        return new CurrencyNode[]{node1, node2};
+                    if ((node1 != node2) && buildExchangeRateId(node1, node2).equals(exchangeRateId)) {
+                        return new CurrencyNode[] { node1, node2 };
                     }
                 }
             }
             return new CurrencyNode[0];
         } finally {
-            dataLock.readLock().unlock();
+            this.dataLock.readLock().unlock();
         }
     }
 
@@ -1087,12 +1129,12 @@ public class Engine {
      * @return Set of CurrencyNodes
      */
     public Set<CurrencyNode> getActiveCurrencies() {
-        dataLock.readLock().lock();
+        this.dataLock.readLock().lock();
 
         try {
-            return getCommodityDAO().getActiveCurrencies();
+            return this.getCommodityDAO().getActiveCurrencies();
         } finally {
-            dataLock.readLock().unlock();
+            this.dataLock.readLock().unlock();
         }
     }
 
@@ -1104,12 +1146,12 @@ public class Engine {
      * @return null if the CurrencyNode as not been defined
      */
     public CurrencyNode getCurrency(final String symbol) {
-        dataLock.readLock().lock();
+        this.dataLock.readLock().lock();
 
         try {
             CurrencyNode rNode = null;
 
-            for (CurrencyNode node : getCurrencies()) {
+            for (final CurrencyNode node : this.getCurrencies()) {
                 if (node.getSymbol().equals(symbol)) {
                     rNode = node;
                     break;
@@ -1117,46 +1159,46 @@ public class Engine {
             }
             return rNode;
         } finally {
-            dataLock.readLock().unlock();
+            this.dataLock.readLock().unlock();
         }
     }
 
-    public List<CurrencyNode> getCurrencies() {
-        dataLock.readLock().lock();
+    public java.util.List<CurrencyNode> getCurrencies() {
+        this.dataLock.readLock().lock();
 
         try {
-            return getCommodityDAO().getCurrencies();
+            return this.getCommodityDAO().getCurrencies();
         } finally {
-            dataLock.readLock().unlock();
+            this.dataLock.readLock().unlock();
         }
     }
 
     public CurrencyNode getCurrencyNodeByUuid(final UUID uuid) {
-        return getCommodityDAO().getCurrencyByUuid(uuid);
+        return this.getCommodityDAO().getCurrencyByUuid(uuid);
     }
 
     public ExchangeRate getExchangeRate(final CurrencyNode baseCurrency, final CurrencyNode exchangeCurrency) {
-        dataLock.readLock().lock();
+        this.dataLock.readLock().lock();
 
         try {
-            return exchangeRateDAO.getExchangeRateNode(baseCurrency, exchangeCurrency);
+            return this.exchangeRateDAO.getExchangeRateNode(baseCurrency, exchangeCurrency);
         } finally {
-            dataLock.readLock().unlock();
+            this.dataLock.readLock().unlock();
         }
     }
 
     public ExchangeRate getExchangeRateByUuid(final UUID uuid) {
-        return getCommodityDAO().getExchangeRateByUuid(uuid);
+        return this.getCommodityDAO().getExchangeRateByUuid(uuid);
     }
 
     @NotNull
-    public List<SecurityNode> getSecurities() {
-        dataLock.readLock().lock();
+    public java.util.List<SecurityNode> getSecurities() {
+        this.dataLock.readLock().lock();
 
         try {
-            return getCommodityDAO().getSecurities();
+            return this.getCommodityDAO().getSecurities();
         } finally {
-            dataLock.readLock().unlock();
+            this.dataLock.readLock().unlock();
         }
     }
 
@@ -1167,14 +1209,14 @@ public class Engine {
      * @return null if not found
      */
     public SecurityNode getSecurity(final String symbol) {
-        dataLock.readLock().lock();
+        this.dataLock.readLock().lock();
 
         try {
-            List<SecurityNode> list = getSecurities();
+            final java.util.List<SecurityNode> list = this.getSecurities();
 
             SecurityNode sNode = null;
 
-            for (SecurityNode node : list) {
+            for (final SecurityNode node : list) {
                 if (node.getSymbol().equals(symbol)) {
                     sNode = node;
                     break;
@@ -1182,27 +1224,27 @@ public class Engine {
             }
             return sNode;
         } finally {
-            dataLock.readLock().unlock();
+            this.dataLock.readLock().unlock();
         }
     }
 
     public SecurityNode getSecurityNodeByUuid(final UUID uuid) {
-        return getCommodityDAO().getSecurityByUuid(uuid);
+        return this.getCommodityDAO().getSecurityByUuid(uuid);
     }
 
     private boolean isCommodityNodeUsed(final CommodityNode node) {
-        dataLock.readLock().lock();
+        this.dataLock.readLock().lock();
 
         try {
-            List<Account> list = getAccountList();
+            final java.util.List<Account> list = this.getAccountList();
 
-            for (Account a : list) {
+            for (final Account a : list) {
                 if (a.getCurrencyNode().equals(node)) {
                     return true;
                 }
 
-                if (a.getAccountType() == AccountType.INVEST || a.getAccountType() == AccountType.MUTUAL) {
-                    for (SecurityNode j : a.getSecurities()) {
+                if ((a.getAccountType() == AccountType.INVEST) || (a.getAccountType() == AccountType.MUTUAL)) {
+                    for (final SecurityNode j : a.getSecurities()) {
                         if (j.equals(node) || j.getReportedCurrencyNode().equals(node)) {
                             return true;
                         }
@@ -1210,16 +1252,16 @@ public class Engine {
                 }
             }
 
-            List<SecurityNode> sList = getSecurities();
+            final java.util.List<SecurityNode> sList = this.getSecurities();
 
-            for (SecurityNode sNode : sList) {
+            for (final SecurityNode sNode : sList) {
                 if (sNode.getReportedCurrencyNode().equals(node)) {
                     return true;
                 }
             }
 
         } finally {
-            dataLock.readLock().unlock();
+            this.dataLock.readLock().unlock();
         }
 
         return false;
@@ -1228,14 +1270,14 @@ public class Engine {
     public boolean removeCommodity(final CurrencyNode node) {
         boolean status = true;
 
-        dataLock.writeLock().lock();
+        this.dataLock.writeLock().lock();
 
         try {
-            if (isCommodityNodeUsed(node)) {
+            if (this.isCommodityNodeUsed(node)) {
                 status = false;
             } else {
-                clearObsoleteExchangeRates();
-                moveObjectToTrash(node);
+                this.clearObsoleteExchangeRates();
+                this.moveObjectToTrash(node);
             }
 
             Message message;
@@ -1245,34 +1287,35 @@ public class Engine {
                 message = new Message(MessageChannel.COMMODITY, ChannelEvent.CURRENCY_REMOVE_FAILED, this);
             }
             message.setObject(MessageProperty.COMMODITY, node);
-            messageBus.fireEvent(message);
+            this.messageBus.fireEvent(message);
 
             return status;
 
         } finally {
-            dataLock.writeLock().unlock();
+            this.dataLock.writeLock().unlock();
         }
     }
 
     public boolean removeSecurity(final SecurityNode node) {
         boolean status = true;
 
-        dataLock.writeLock().lock();
+        this.dataLock.writeLock().lock();
 
         try {
-            if (isCommodityNodeUsed(node)) {
+            if (this.isCommodityNodeUsed(node)) {
                 status = false;
             } else {
                 // Remove all history nodes first so they are not left behind
 
                 // A copy is made to prevent a concurrent modification error to the underlying list, Bug #208
-                final List<SecurityHistoryNode> hNodes = new ArrayList<>(node.getHistoryNodes());
+                final java.util.List<SecurityHistoryNode> hNodes = new ArrayList<>(node.getHistoryNodes());
 
-                hNodes.stream()
-                        .filter(hNode -> !removeSecurityHistory(node, hNode.getLocalDate()))
-                        .forEach(hNode -> logSevere(ResourceUtils.getString("Message.Error.HistRemoval",
-                                hNode.getLocalDate(), node.getSymbol())));
-                moveObjectToTrash(node);
+                hNodes
+                    .stream()
+                        .filter(hNode -> !this.removeSecurityHistory(node, hNode.getLocalDate()))
+                        .forEach(hNode -> logSevere(
+                            ResourceUtils.getString("Message.Error.HistRemoval", hNode.getLocalDate(), node.getSymbol())));
+                this.moveObjectToTrash(node);
             }
 
             Message message;
@@ -1282,12 +1325,12 @@ public class Engine {
                 message = new Message(MessageChannel.COMMODITY, ChannelEvent.SECURITY_REMOVE_FAILED, this);
             }
             message.setObject(MessageProperty.COMMODITY, node);
-            messageBus.fireEvent(message);
+            this.messageBus.fireEvent(message);
 
             return status;
 
         } finally {
-            dataLock.writeLock().unlock();
+            this.dataLock.writeLock().unlock();
         }
     }
 
@@ -1299,7 +1342,7 @@ public class Engine {
      * @return {@code true} if a {@code SecurityHistoryNode} was found and removed
      */
     public boolean removeSecurityHistory(@NotNull final SecurityNode node, @NotNull final LocalDate date) {
-        dataLock.writeLock().lock();
+        this.dataLock.writeLock().lock();
 
         boolean status = false;
 
@@ -1309,9 +1352,9 @@ public class Engine {
             if (optional.isPresent()) {
                 status = node.removeHistoryNode(date);
 
-                if (status) {   // removal was a success, make sure we cleanup properly
-                    moveObjectToTrash(optional.get());
-                    status = getCommodityDAO().removeSecurityHistory(node, optional.get());
+                if (status) { // removal was a success, make sure we cleanup properly
+                    this.moveObjectToTrash(optional.get());
+                    status = this.getCommodityDAO().removeSecurityHistory(node, optional.get());
 
                     logInfo(ResourceUtils.getString("Message.RemovingSecurityHistory", date, node.getSymbol()));
                 }
@@ -1320,18 +1363,18 @@ public class Engine {
             Message message;
 
             if (status) {
-                clearCachedAccountBalance(node);
+                this.clearCachedAccountBalance(node);
                 message = new Message(MessageChannel.COMMODITY, ChannelEvent.SECURITY_HISTORY_REMOVE, this);
             } else {
                 message = new Message(MessageChannel.COMMODITY, ChannelEvent.SECURITY_HISTORY_REMOVE_FAILED, this);
             }
 
             message.setObject(MessageProperty.COMMODITY, node);
-            messageBus.fireEvent(message);
+            this.messageBus.fireEvent(message);
 
             return status;
         } finally {
-            dataLock.writeLock().unlock();
+            this.dataLock.writeLock().unlock();
         }
     }
 
@@ -1343,57 +1386,57 @@ public class Engine {
      * @return {@code true} if the {@code SecurityHistoryEvent} was found and removed
      */
     public boolean removeSecurityHistoryEvent(@NotNull final SecurityNode node, @NotNull final SecurityHistoryEvent historyEvent) {
-        dataLock.writeLock().lock();
+        this.dataLock.writeLock().lock();
 
         boolean status;
 
         try {
             status = node.removeSecurityHistoryEvent(historyEvent);
 
-            if (status) {   // removal was a success, make sure we cleanup properly
-                moveObjectToTrash(historyEvent);
-                status = getCommodityDAO().removeSecurityHistoryEvent(node, historyEvent);
+            if (status) { // removal was a success, make sure we cleanup properly
+                this.moveObjectToTrash(historyEvent);
+                status = this.getCommodityDAO().removeSecurityHistoryEvent(node, historyEvent);
             }
 
             Message message;
 
             if (status) {
-                clearCachedAccountBalance(node);
+                this.clearCachedAccountBalance(node);
                 message = new Message(MessageChannel.COMMODITY, ChannelEvent.SECURITY_HISTORY_EVENT_REMOVE, this);
             } else {
                 message = new Message(MessageChannel.COMMODITY, ChannelEvent.SECURITY_HISTORY_EVENT_REMOVE_FAILED, this);
             }
 
             message.setObject(MessageProperty.COMMODITY, node);
-            messageBus.fireEvent(message);
+            this.messageBus.fireEvent(message);
 
             return status;
         } finally {
-            dataLock.writeLock().unlock();
+            this.dataLock.writeLock().unlock();
         }
     }
 
     private Config getConfig() {
 
-        dataLock.readLock().lock();
+        this.dataLock.readLock().lock();
 
         try {
-            if (config == null) {
-                config = getConfigDAO().getDefaultConfig();
+            if (this.config == null) {
+                this.config = this.getConfigDAO().getDefaultConfig();
             }
-            return config;
+            return this.config;
 
         } finally {
-            dataLock.readLock().unlock();
+            this.dataLock.readLock().unlock();
         }
     }
 
     public CurrencyNode getDefaultCurrency() {
 
-        dataLock.readLock().lock();
+        this.dataLock.readLock().lock();
 
         try {
-            CurrencyNode node = getConfig().getDefaultCurrency();
+            final CurrencyNode node = this.getConfig().getDefaultCurrency();
 
             if (node == null) {
                 logger.warning("No default currency assigned");
@@ -1401,51 +1444,52 @@ public class Engine {
 
             return node;
         } finally {
-            dataLock.readLock().unlock();
+            this.dataLock.readLock().unlock();
         }
     }
 
     public void setDefaultCurrency(final CurrencyNode defaultCurrency) {
 
         // make sure the new default is persisted if it has not been
-        if (!isStored(defaultCurrency)) {
-            addCurrency(defaultCurrency);
+        if (!this.isStored(defaultCurrency)) {
+            this.addCurrency(defaultCurrency);
         }
 
-        dataLock.writeLock().lock();
+        this.dataLock.writeLock().lock();
 
         try {
-            final Config currencyConfig = getConfig();
+            final Config currencyConfig = this.getConfig();
             currencyConfig.setDefaultCurrency(defaultCurrency);
-            getConfigDAO().update(currencyConfig);
+            this.getConfigDAO().update(currencyConfig);
 
             logInfo("Setting default currency: " + defaultCurrency);
 
             Message message = new Message(MessageChannel.CONFIG, ChannelEvent.CONFIG_MODIFY, this);
             message.setObject(MessageProperty.CONFIG, currencyConfig);
-            messageBus.fireEvent(message);
+            this.messageBus.fireEvent(message);
 
-            Account root = getRootAccount();
+            final Account root = this.getRootAccount();
 
             // The root account holds a reference to the default currency
             root.setCurrencyNode(defaultCurrency);
-            getAccountDAO().updateAccount(root);
+            this.getAccountDAO().updateAccount(root);
 
             message = new Message(MessageChannel.ACCOUNT, ChannelEvent.ACCOUNT_MODIFY, this);
             message.setObject(MessageProperty.ACCOUNT, root);
-            messageBus.fireEvent(message);
+            this.messageBus.fireEvent(message);
         } finally {
-            dataLock.writeLock().unlock();
+            this.dataLock.writeLock().unlock();
         }
     }
 
-    public void setExchangeRate(final CurrencyNode baseCurrency, final CurrencyNode exchangeCurrency,
-                                final BigDecimal rate) {
-        setExchangeRate(baseCurrency, exchangeCurrency, rate, LocalDate.now());
+    public void setExchangeRate(final CurrencyNode baseCurrency, final CurrencyNode exchangeCurrency, final BigDecimal rate) {
+        this.setExchangeRate(baseCurrency, exchangeCurrency, rate, LocalDate.now());
     }
 
-    public void setExchangeRate(final CurrencyNode baseCurrency, final CurrencyNode exchangeCurrency,
-                                final BigDecimal rate, final LocalDate localDate) {
+    public void setExchangeRate(final CurrencyNode baseCurrency,
+        final CurrencyNode exchangeCurrency,
+        final BigDecimal rate,
+        final LocalDate localDate) {
         Objects.requireNonNull(rate);
 
         if (rate.compareTo(BigDecimal.ZERO) < 1) {
@@ -1457,19 +1501,19 @@ public class Engine {
         }
 
         // find the correct ExchangeRate and create if needed
-        ExchangeRate exchangeRate = getExchangeRate(baseCurrency, exchangeCurrency);
+        ExchangeRate exchangeRate = this.getExchangeRate(baseCurrency, exchangeCurrency);
 
         if (exchangeRate == null) {
             exchangeRate = new ExchangeRate(buildExchangeRateId(baseCurrency, exchangeCurrency));
-            getCommodityDAO().addExchangeRate(exchangeRate);
+            this.getCommodityDAO().addExchangeRate(exchangeRate);
         }
 
         // Remove old history of the same date if it exists
         if (exchangeRate.contains(localDate)) {
-            removeExchangeRateHistory(exchangeRate, exchangeRate.getHistory(localDate));
+            this.removeExchangeRateHistory(exchangeRate, exchangeRate.getHistory(localDate));
         }
 
-        dataLock.writeLock().lock();
+        this.dataLock.writeLock().lock();
 
         try {
             // create the new history node
@@ -1486,7 +1530,7 @@ public class Engine {
             boolean result = false;
 
             if (exchangeRate.addHistoryNode(historyNode)) {
-                result = getCommodityDAO().addExchangeRateHistory(exchangeRate);
+                result = this.getCommodityDAO().addExchangeRateHistory(exchangeRate);
             }
 
             if (result) {
@@ -1497,15 +1541,15 @@ public class Engine {
 
             message.setObject(MessageProperty.EXCHANGE_RATE, exchangeRate);
 
-            messageBus.fireEvent(message);
+            this.messageBus.fireEvent(message);
         } finally {
-            dataLock.writeLock().unlock();
+            this.dataLock.writeLock().unlock();
         }
     }
 
     public void removeExchangeRateHistory(final ExchangeRate exchangeRate, final ExchangeRateHistoryNode history) {
 
-        dataLock.writeLock().lock();
+        this.dataLock.writeLock().lock();
 
         try {
             final Message message;
@@ -1514,8 +1558,8 @@ public class Engine {
 
             if (exchangeRate.contains(history)) {
                 if (exchangeRate.removeHistoryNode(history)) {
-                    moveObjectToTrash(history);
-                    result = getCommodityDAO().removeExchangeRateHistory(exchangeRate);
+                    this.moveObjectToTrash(history);
+                    result = this.getCommodityDAO().removeExchangeRateHistory(exchangeRate);
                 }
             }
 
@@ -1526,9 +1570,9 @@ public class Engine {
             }
 
             message.setObject(MessageProperty.EXCHANGE_RATE, exchangeRate);
-            messageBus.fireEvent(message);
+            this.messageBus.fireEvent(message);
         } finally {
-            dataLock.writeLock().unlock();
+            this.dataLock.writeLock().unlock();
         }
     }
 
@@ -1547,7 +1591,7 @@ public class Engine {
             throw new EngineException("node were the same");
         }
 
-        dataLock.writeLock().lock();
+        this.dataLock.writeLock().lock();
 
         try {
             boolean status;
@@ -1569,7 +1613,7 @@ public class Engine {
                     ((SecurityNode) oldNode).setISIN(((SecurityNode) templateNode).getISIN());
                 }
 
-                status = getCommodityDAO().updateCommodityNode(oldNode);
+                status = this.getCommodityDAO().updateCommodityNode(oldNode);
             } else {
                 status = false;
                 logger.warning("Template object class did not match old object class");
@@ -1595,15 +1639,15 @@ public class Engine {
                 }
             }
 
-            messageBus.fireEvent(message);
+            this.messageBus.fireEvent(message);
             return status;
         } finally {
-            dataLock.writeLock().unlock();
+            this.dataLock.writeLock().unlock();
         }
     }
 
     private boolean updateReminder(final Reminder reminder) {
-        final boolean result = getReminderDAO().updateReminder(reminder);
+        final boolean result = this.getReminderDAO().updateReminder(reminder);
 
         final Message message;
 
@@ -1615,44 +1659,44 @@ public class Engine {
 
         message.setObject(MessageProperty.REMINDER, reminder);
 
-        messageBus.fireEvent(message);
+        this.messageBus.fireEvent(message);
 
         return result;
     }
 
     public String getAccountSeparator() {
 
-        dataLock.readLock().lock();
+        this.dataLock.readLock().lock();
 
         try {
-            if (accountSeparator == null) {
-                accountSeparator = getConfig().getAccountSeparator();
+            if (this.accountSeparator == null) {
+                this.accountSeparator = this.getConfig().getAccountSeparator();
             }
-            return accountSeparator;
+            return this.accountSeparator;
 
         } finally {
-            dataLock.readLock().unlock();
+            this.dataLock.readLock().unlock();
         }
     }
 
     public void setAccountSeparator(final String separator) {
 
-        dataLock.writeLock().lock();
+        this.dataLock.writeLock().lock();
 
         try {
-            accountSeparator = separator;
-            Config localConfig = getConfig();
+            this.accountSeparator = separator;
+            final Config localConfig = this.getConfig();
 
             localConfig.setAccountSeparator(separator);
 
-            getConfigDAO().update(localConfig);
+            this.getConfigDAO().update(localConfig);
 
-            Message message = new Message(MessageChannel.CONFIG, ChannelEvent.CONFIG_MODIFY, this);
+            final Message message = new Message(MessageChannel.CONFIG, ChannelEvent.CONFIG_MODIFY, this);
             message.setObject(MessageProperty.CONFIG, localConfig);
 
-            messageBus.fireEvent(message);
+            this.messageBus.fireEvent(message);
         } finally {
-            dataLock.writeLock().unlock();
+            this.dataLock.writeLock().unlock();
         }
     }
 
@@ -1661,15 +1705,15 @@ public class Engine {
      *
      * @return List of accounts
      */
-    public List<Account> getAccountList() {
-        final List<Account> accounts = getAccountDAO().getAccountList();
-        accounts.remove(getRootAccount());
+    public java.util.List<Account> getAccountList() {
+        final java.util.List<Account> accounts = this.getAccountDAO().getAccountList();
+        accounts.remove(this.getRootAccount());
 
         return accounts;
     }
 
     public Account getAccountByUuid(final UUID id) {
-        return getAccountDAO().getAccountByUuid(id);
+        return this.getAccountDAO().getAccountByUuid(id);
     }
 
     /**
@@ -1681,7 +1725,7 @@ public class Engine {
     public Account getAccountByName(@NotNull final String accountName) {
         Objects.requireNonNull(accountName);
 
-        final List<Account> list = getAccountList();
+        final java.util.List<Account> list = this.getAccountList();
 
         // sort for consistent search order
         Collections.sort(list);
@@ -1700,8 +1744,8 @@ public class Engine {
      * @return List of income accounts
      */
     @NotNull
-    public List<Account> getIncomeAccountList() {
-        return getAccountDAO().getIncomeAccountList();
+    public java.util.List<Account> getIncomeAccountList() {
+        return this.getAccountDAO().getIncomeAccountList();
     }
 
     /**
@@ -1710,8 +1754,8 @@ public class Engine {
      * @return List if expense accounts
      */
     @NotNull
-    public List<Account> getExpenseAccountList() {
-        return getAccountDAO().getExpenseAccountList();
+    public java.util.List<Account> getExpenseAccountList() {
+        return this.getAccountDAO().getExpenseAccountList();
     }
 
     /**
@@ -1719,13 +1763,13 @@ public class Engine {
      *
      * @return List of investment accounts
      */
-    public List<Account> getInvestmentAccountList() {
+    public java.util.List<Account> getInvestmentAccountList() {
 
-        return getAccountDAO().getInvestmentAccountList();
+        return this.getAccountDAO().getInvestmentAccountList();
     }
 
     public void refresh(final StoredObject object) {
-        eDAO.refresh(object);
+        this.eDAO.refresh(object);
     }
 
     /**
@@ -1743,7 +1787,7 @@ public class Engine {
             throw new IllegalArgumentException("Invalid Account");
         }
 
-        dataLock.writeLock().lock();
+        this.dataLock.writeLock().lock();
 
         try {
             Message message;
@@ -1752,25 +1796,25 @@ public class Engine {
             result = parent.addChild(child);
 
             if (result) {
-                result = getAccountDAO().addAccount(parent, child);
+                result = this.getAccountDAO().addAccount(parent, child);
             }
 
             if (result) {
                 message = new Message(MessageChannel.ACCOUNT, ChannelEvent.ACCOUNT_ADD, this);
                 message.setObject(MessageProperty.ACCOUNT, child);
-                messageBus.fireEvent(message);
+                this.messageBus.fireEvent(message);
 
-                logInfo(rb.getString("Message.AccountAdd"));
+                logInfo(this.rb.getString("Message.AccountAdd"));
                 result = true;
             } else {
                 message = new Message(MessageChannel.ACCOUNT, ChannelEvent.ACCOUNT_ADD_FAILED, this);
                 message.setObject(MessageProperty.ACCOUNT, child);
-                messageBus.fireEvent(message);
+                this.messageBus.fireEvent(message);
                 result = false;
             }
             return result;
         } finally {
-            dataLock.writeLock().unlock();
+            this.dataLock.writeLock().unlock();
         }
     }
 
@@ -1781,15 +1825,15 @@ public class Engine {
      */
     public RootAccount getRootAccount() {
 
-        dataLock.readLock().lock();
+        this.dataLock.readLock().lock();
 
         try {
-            if (rootAccount == null) {
-                rootAccount = getAccountDAO().getRootAccount();
+            if (this.rootAccount == null) {
+                this.rootAccount = this.getAccountDAO().getRootAccount();
             }
-            return rootAccount;
+            return this.rootAccount;
         } finally {
-            dataLock.readLock().unlock();
+            this.dataLock.readLock().unlock();
         }
     }
 
@@ -1804,50 +1848,50 @@ public class Engine {
         Objects.requireNonNull(account);
         Objects.requireNonNull(newParent);
 
-        dataLock.writeLock().lock();
+        this.dataLock.writeLock().lock();
 
         try {
             // cannot invert the child/parent relationship of an account
             if (account.contains(newParent)) {
-                Message message = new Message(MessageChannel.ACCOUNT, ChannelEvent.ACCOUNT_MODIFY_FAILED, this);
+                final Message message = new Message(MessageChannel.ACCOUNT, ChannelEvent.ACCOUNT_MODIFY_FAILED, this);
                 message.setObject(MessageProperty.ACCOUNT, account);
-                messageBus.fireEvent(message);
+                this.messageBus.fireEvent(message);
 
-                logInfo(rb.getString("Message.AccountMoveFailed"));
+                logInfo(this.rb.getString("Message.AccountMoveFailed"));
 
                 return false;
             }
 
-            Account oldParent = account.getParent();
+            final Account oldParent = account.getParent();
 
             if (oldParent != null) { // check for detached account
 
                 oldParent.removeChild(account);
 
-                getAccountDAO().updateAccount(account);
-                getAccountDAO().updateAccount(oldParent);
+                this.getAccountDAO().updateAccount(account);
+                this.getAccountDAO().updateAccount(oldParent);
 
-                Message message = new Message(MessageChannel.ACCOUNT, ChannelEvent.ACCOUNT_MODIFY, this);
+                final Message message = new Message(MessageChannel.ACCOUNT, ChannelEvent.ACCOUNT_MODIFY, this);
                 message.setObject(MessageProperty.ACCOUNT, oldParent);
 
-                messageBus.fireEvent(message);
+                this.messageBus.fireEvent(message);
             }
 
             newParent.addChild(account);
 
-            getAccountDAO().updateAccount(account);
-            getAccountDAO().updateAccount(newParent);
+            this.getAccountDAO().updateAccount(account);
+            this.getAccountDAO().updateAccount(newParent);
 
-            Message message = new Message(MessageChannel.ACCOUNT, ChannelEvent.ACCOUNT_MODIFY, this);
+            final Message message = new Message(MessageChannel.ACCOUNT, ChannelEvent.ACCOUNT_MODIFY, this);
             message.setObject(MessageProperty.ACCOUNT, newParent);
 
-            messageBus.fireEvent(message);
+            this.messageBus.fireEvent(message);
 
-            logInfo(rb.getString(MESSAGE_ACCOUNT_MODIFY));
+            logInfo(this.rb.getString(MESSAGE_ACCOUNT_MODIFY));
 
             return true;
         } finally {
-            dataLock.writeLock().unlock();
+            this.dataLock.writeLock().unlock();
         }
     }
 
@@ -1861,18 +1905,18 @@ public class Engine {
     public boolean setAccountCode(final Account account, final int code) {
         account.setAccountCode(code);
 
-        boolean result = getAccountDAO().updateAccount(account);
+        final boolean result = this.getAccountDAO().updateAccount(account);
 
         if (result) {
             final Message message = new Message(MessageChannel.ACCOUNT, ChannelEvent.ACCOUNT_MODIFY, this);
             message.setObject(MessageProperty.ACCOUNT, account);
-            messageBus.fireEvent(message);
+            this.messageBus.fireEvent(message);
 
-            logInfo(rb.getString(MESSAGE_ACCOUNT_MODIFY));
+            logInfo(this.rb.getString(MESSAGE_ACCOUNT_MODIFY));
         } else {
             final Message message = new Message(MessageChannel.ACCOUNT, ChannelEvent.ACCOUNT_MODIFY_FAILED, this);
             message.setObject(MessageProperty.ACCOUNT, account);
-            messageBus.fireEvent(message);
+            this.messageBus.fireEvent(message);
         }
 
         return result;
@@ -1890,7 +1934,7 @@ public class Engine {
         boolean result;
         Message message;
 
-        dataLock.writeLock().lock();
+        this.dataLock.writeLock().lock();
 
         try {
             account.setName(template.getName());
@@ -1914,36 +1958,36 @@ public class Engine {
                 account.setCurrencyNode(template.getCurrencyNode());
             }
 
-            result = getAccountDAO().updateAccount(account);
+            result = this.getAccountDAO().updateAccount(account);
 
             if (result) {
                 message = new Message(MessageChannel.ACCOUNT, ChannelEvent.ACCOUNT_MODIFY, this);
                 message.setObject(MessageProperty.ACCOUNT, account);
-                messageBus.fireEvent(message);
+                this.messageBus.fireEvent(message);
 
-                logInfo(rb.getString(MESSAGE_ACCOUNT_MODIFY));
+                logInfo(this.rb.getString(MESSAGE_ACCOUNT_MODIFY));
             } else {
                 message = new Message(MessageChannel.ACCOUNT, ChannelEvent.ACCOUNT_MODIFY_FAILED, this);
                 message.setObject(MessageProperty.ACCOUNT, account);
-                messageBus.fireEvent(message);
+                this.messageBus.fireEvent(message);
             }
 
             /* Check to see if the account needs to be moved */
-            if (account.parentAccount != template.parentAccount && template.parentAccount != null && result) {
-                if (!moveAccount(account, template.parentAccount)) {
-                    logWarning(rb.getString("Message.Error.MoveAccount"));
+            if ((account.parentAccount != template.parentAccount) && (template.parentAccount != null) && result) {
+                if (!this.moveAccount(account, template.parentAccount)) {
+                    logWarning(this.rb.getString("Message.Error.MoveAccount"));
                     result = false;
                 }
             }
 
             // Force clearing of any budget goals if an empty account has been changed to become a place holder
             if (account.isPlaceHolder()) {
-                purgeBudgetGoal(account);
+                this.purgeBudgetGoal(account);
             }
 
             return result;
         } finally {
-            dataLock.writeLock().unlock();
+            this.dataLock.writeLock().unlock();
         }
     }
 
@@ -1954,9 +1998,9 @@ public class Engine {
      */
     private void purgeBudgetGoal(@NotNull final Account account) {
         // clear budget history
-        for (final Budget budget : getBudgetList()) {
+        for (final Budget budget : this.getBudgetList()) {
             budget.removeBudgetGoal(account);
-            if (!updateBudget(budget)) {
+            if (!this.updateBudget(budget)) {
                 logWarning("Unable to remove account goals from the budget");
             }
         }
@@ -1970,19 +2014,19 @@ public class Engine {
      */
     public void setAccountNumber(final Account account, final String number) {
 
-        dataLock.writeLock().lock();
+        this.dataLock.writeLock().lock();
 
         try {
             account.setAccountNumber(number);
-            getAccountDAO().updateAccount(account);
+            this.getAccountDAO().updateAccount(account);
 
-            Message message = new Message(MessageChannel.ACCOUNT, ChannelEvent.ACCOUNT_MODIFY, this);
+            final Message message = new Message(MessageChannel.ACCOUNT, ChannelEvent.ACCOUNT_MODIFY, this);
             message.setObject(MessageProperty.ACCOUNT, account);
-            messageBus.fireEvent(message);
+            this.messageBus.fireEvent(message);
 
-            logInfo(rb.getString(MESSAGE_ACCOUNT_MODIFY));
+            logInfo(this.rb.getString(MESSAGE_ACCOUNT_MODIFY));
         } finally {
-            dataLock.writeLock().unlock();
+            this.dataLock.writeLock().unlock();
         }
     }
 
@@ -1995,29 +2039,29 @@ public class Engine {
      */
     public void setAccountAttribute(final Account account, @NotNull final String key, @Nullable final String value) {
         // Throw an error if the value exceeds the maximum length
-        if (value != null && value.length() > Account.MAX_ATTRIBUTE_LENGTH) {
-            Message message = new Message(MessageChannel.ACCOUNT, ChannelEvent.ACCOUNT_MODIFY_FAILED, this);
+        if ((value != null) && (value.length() > Account.MAX_ATTRIBUTE_LENGTH)) {
+            final Message message = new Message(MessageChannel.ACCOUNT, ChannelEvent.ACCOUNT_MODIFY_FAILED, this);
             message.setObject(MessageProperty.ACCOUNT, account);
-            messageBus.fireEvent(message);
+            this.messageBus.fireEvent(message);
 
             logInfo("The maximum length of the attribute was exceeded");
 
             return;
         }
 
-        dataLock.writeLock().lock();
+        this.dataLock.writeLock().lock();
 
         try {
             account.setAttribute(key, value);
-            getAccountDAO().updateAccount(account);
+            this.getAccountDAO().updateAccount(account);
 
-            Message message = new Message(MessageChannel.ACCOUNT, ChannelEvent.ACCOUNT_ATTRIBUTE_MODIFY, this);
+            final Message message = new Message(MessageChannel.ACCOUNT, ChannelEvent.ACCOUNT_ATTRIBUTE_MODIFY, this);
             message.setObject(MessageProperty.ACCOUNT, account);
-            messageBus.fireEvent(message);
+            this.messageBus.fireEvent(message);
 
-            logInfo(rb.getString(MESSAGE_ACCOUNT_MODIFY));
+            logInfo(this.rb.getString(MESSAGE_ACCOUNT_MODIFY));
         } finally {
-            dataLock.writeLock().unlock();
+            this.dataLock.writeLock().unlock();
         }
     }
 
@@ -2041,26 +2085,26 @@ public class Engine {
      */
     public boolean removeAccount(final Account account) {
 
-        dataLock.writeLock().lock();
+        this.dataLock.writeLock().lock();
 
         try {
             boolean result = false;
 
-            if (account.getTransactionCount() == 0 && account.getChildCount() == 0) {
-                Account parent = account.getParent();
+            if ((account.getTransactionCount() == 0) && (account.getChildCount() == 0)) {
+                final Account parent = account.getParent();
 
                 if (parent != null) {
                     result = parent.removeChild(account);
 
                     if (result) {
-                        getAccountDAO().updateAccount(parent);
+                        this.getAccountDAO().updateAccount(parent);
 
                         // clear budget history
-                        purgeBudgetGoal(account);
+                        this.purgeBudgetGoal(account);
                     }
                 }
 
-                moveObjectToTrash(account);
+                this.moveObjectToTrash(account);
             }
 
             Message message;
@@ -2068,31 +2112,31 @@ public class Engine {
             if (result) {
                 message = new Message(MessageChannel.ACCOUNT, ChannelEvent.ACCOUNT_REMOVE, this);
                 message.setObject(MessageProperty.ACCOUNT, account);
-                messageBus.fireEvent(message);
+                this.messageBus.fireEvent(message);
 
-                logInfo(rb.getString("Message.AccountRemove"));
+                logInfo(this.rb.getString("Message.AccountRemove"));
             } else {
                 message = new Message(MessageChannel.ACCOUNT, ChannelEvent.ACCOUNT_REMOVE_FAILED, this);
                 message.setObject(MessageProperty.ACCOUNT, account);
-                messageBus.fireEvent(message);
+                this.messageBus.fireEvent(message);
             }
 
             return result;
         } finally {
-            dataLock.writeLock().unlock();
+            this.dataLock.writeLock().unlock();
         }
     }
 
     public Future<Path> getAttachment(final String attachment) {
-        return attachmentManager.getAttachment(attachment);
+        return this.attachmentManager.getAttachment(attachment);
     }
 
     public boolean addAttachment(final Path path, final boolean copy) {
         boolean result = false;
 
         try {
-            result = attachmentManager.addAttachment(path, copy);
-        } catch (IOException e) {
+            result = this.attachmentManager.addAttachment(path, copy);
+        } catch (final IOException e) {
             logSevere(e.getLocalizedMessage());
         }
 
@@ -2100,7 +2144,7 @@ public class Engine {
     }
 
     public boolean removeAttachment(final String attachment) {
-        return attachmentManager.removeAttachment(attachment);
+        return this.attachmentManager.removeAttachment(attachment);
     }
 
     /**
@@ -2112,14 +2156,14 @@ public class Engine {
      */
     public boolean setAmortizeObject(final Account account, final AmortizeObject amortizeObject) {
 
-        dataLock.writeLock().lock();
+        this.dataLock.writeLock().lock();
 
         try {
-            if (account != null && amortizeObject != null && account.getAccountType() == AccountType.LIABILITY) {
+            if ((account != null) && (amortizeObject != null) && (account.getAccountType() == AccountType.LIABILITY)) {
 
                 account.setAmortizeObject(amortizeObject);
 
-                if (!getAccountDAO().updateAccount(account)) {
+                if (!this.getAccountDAO().updateAccount(account)) {
                     logSevere("Was not able to save the amortize object");
                 }
 
@@ -2127,7 +2171,7 @@ public class Engine {
             }
             return false;
         } finally {
-            dataLock.writeLock().unlock();
+            this.dataLock.writeLock().unlock();
         }
     }
 
@@ -2138,23 +2182,23 @@ public class Engine {
      */
     public void toggleAccountVisibility(final Account account) {
 
-        dataLock.writeLock().lock();
+        this.dataLock.writeLock().lock();
 
         try {
             Message message;
 
             account.setVisible(!account.isVisible());
 
-            if (getAccountDAO().toggleAccountVisibility(account)) {
+            if (this.getAccountDAO().toggleAccountVisibility(account)) {
                 message = new Message(MessageChannel.ACCOUNT, ChannelEvent.ACCOUNT_VISIBILITY_CHANGE, this);
             } else {
                 message = new Message(MessageChannel.ACCOUNT, ChannelEvent.ACCOUNT_VISIBILITY_CHANGE_FAILED, this);
             }
 
             message.setObject(MessageProperty.ACCOUNT, account);
-            messageBus.fireEvent(message);
+            this.messageBus.fireEvent(message);
         } finally {
-            dataLock.writeLock().unlock();
+            this.dataLock.writeLock().unlock();
         }
     }
 
@@ -2167,7 +2211,7 @@ public class Engine {
      */
     public boolean addAccountSecurity(final Account account, final SecurityNode node) {
 
-        dataLock.writeLock().lock();
+        this.dataLock.writeLock().lock();
 
         try {
             Message message;
@@ -2175,7 +2219,7 @@ public class Engine {
             boolean result = account.addSecurity(node);
 
             if (result) {
-                result = getAccountDAO().addAccountSecurity(account, node);
+                result = this.getAccountDAO().addAccountSecurity(account, node);
             }
 
             if (result) {
@@ -2186,12 +2230,12 @@ public class Engine {
 
             message.setObject(MessageProperty.ACCOUNT, account);
             message.setObject(MessageProperty.COMMODITY, node);
-            messageBus.fireEvent(message);
+            this.messageBus.fireEvent(message);
 
             return result;
 
         } finally {
-            dataLock.writeLock().unlock();
+            this.dataLock.writeLock().unlock();
         }
     }
 
@@ -2205,14 +2249,14 @@ public class Engine {
     private boolean removeAccountSecurity(final Account account, final SecurityNode node) {
         Objects.requireNonNull(node);
 
-        dataLock.writeLock().lock();
+        this.dataLock.writeLock().lock();
 
         try {
             Message message;
-            boolean result = account.removeSecurity(node);
+            final boolean result = account.removeSecurity(node);
 
             if (result) {
-                getAccountDAO().updateAccount(account);
+                this.getAccountDAO().updateAccount(account);
             }
 
             if (result) {
@@ -2223,12 +2267,12 @@ public class Engine {
 
             message.setObject(MessageProperty.ACCOUNT, account);
             message.setObject(MessageProperty.COMMODITY, node);
-            messageBus.fireEvent(message);
+            this.messageBus.fireEvent(message);
 
             return result;
 
         } finally {
-            dataLock.writeLock().unlock();
+            this.dataLock.writeLock().unlock();
         }
     }
 
@@ -2245,32 +2289,30 @@ public class Engine {
         boolean result = true;
 
         if (acc.memberOf(AccountGroup.INVEST)) {
-            dataLock.writeLock().lock();
+            this.dataLock.writeLock().lock();
 
             try {
                 final Collection<SecurityNode> oldList = acc.getSecurities();
 
-                for (SecurityNode node : oldList) {
+                for (final SecurityNode node : oldList) {
                     if (!list.contains(node)) {
-                        if (!removeAccountSecurity(acc, node)) {
-                            logWarning(ResourceUtils.getString("Message.Error.SecurityAccountRemove", node.toString(),
-                                    acc.getName()));
+                        if (!this.removeAccountSecurity(acc, node)) {
+                            logWarning(ResourceUtils.getString("Message.Error.SecurityAccountRemove", node.toString(), acc.getName()));
                             result = false;
                         }
                     }
                 }
 
-                for (SecurityNode node : list) {
+                for (final SecurityNode node : list) {
                     if (!oldList.contains(node)) {
-                        if (!addAccountSecurity(acc, node)) {
-                            logWarning(ResourceUtils.getString("Message.Error.SecurityAccountRemove", node.toString(),
-                                    acc.getName()));
+                        if (!this.addAccountSecurity(acc, node)) {
+                            logWarning(ResourceUtils.getString("Message.Error.SecurityAccountRemove", node.toString(), acc.getName()));
                             result = false;
                         }
                     }
                 }
             } finally {
-                dataLock.writeLock().unlock();
+                this.dataLock.writeLock().unlock();
             }
         }
 
@@ -2281,12 +2323,12 @@ public class Engine {
 
         boolean result;
 
-        dataLock.writeLock().lock();
+        this.dataLock.writeLock().lock();
 
         try {
             Message message;
 
-            result = getBudgetDAO().add(budget);
+            result = this.getBudgetDAO().add(budget);
 
             if (result) {
                 message = new Message(MessageChannel.BUDGET, ChannelEvent.BUDGET_ADD, this);
@@ -2295,12 +2337,12 @@ public class Engine {
             }
 
             message.setObject(MessageProperty.BUDGET, budget);
-            messageBus.fireEvent(message);
+            this.messageBus.fireEvent(message);
 
             return result;
 
         } finally {
-            dataLock.writeLock().unlock();
+            this.dataLock.writeLock().unlock();
         }
     }
 
@@ -2308,49 +2350,49 @@ public class Engine {
 
         boolean result = false;
 
-        dataLock.writeLock().lock();
+        this.dataLock.writeLock().lock();
 
         try {
-            moveObjectToTrash(budget);
+            this.moveObjectToTrash(budget);
 
-            Message message = new Message(MessageChannel.BUDGET, ChannelEvent.BUDGET_REMOVE, this);
+            final Message message = new Message(MessageChannel.BUDGET, ChannelEvent.BUDGET_REMOVE, this);
 
             message.setObject(MessageProperty.BUDGET, budget);
-            messageBus.fireEvent(message);
+            this.messageBus.fireEvent(message);
 
             result = true;
         } catch (final Exception ex) {
             logger.log(Level.SEVERE, ex.getLocalizedMessage(), ex);
         } finally {
-            dataLock.writeLock().unlock();
+            this.dataLock.writeLock().unlock();
         }
 
         return result;
     }
 
     public void updateBudgetGoals(final Budget budget, final Account account, final BudgetGoal newGoals) {
-        dataLock.writeLock().lock();
+        this.dataLock.writeLock().lock();
 
         try {
-            BudgetGoal oldGoals = budget.getBudgetGoal(account);
+            final BudgetGoal oldGoals = budget.getBudgetGoal(account);
 
             budget.setBudgetGoal(account, newGoals);
 
-            moveObjectToTrash(oldGoals);    // need to keep the old goal around, will be cleaned up later, orphan removal causes refresh issues
+            this.moveObjectToTrash(oldGoals); // need to keep the old goal around, will be cleaned up later, orphan removal causes refresh issues
 
-            updateBudgetGoals(budget, account);
+            this.updateBudgetGoals(budget, account);
         } finally {
-            dataLock.writeLock().unlock();
+            this.dataLock.writeLock().unlock();
         }
     }
 
     private void updateBudgetGoals(final Budget budget, final Account account) {
-        dataLock.writeLock().lock();
+        this.dataLock.writeLock().lock();
 
         try {
             Message message;
 
-            boolean result = getBudgetDAO().update(budget);
+            final boolean result = this.getBudgetDAO().update(budget);
 
             if (result) {
                 message = new Message(MessageChannel.BUDGET, ChannelEvent.BUDGET_GOAL_UPDATE, this);
@@ -2361,11 +2403,11 @@ public class Engine {
             message.setObject(MessageProperty.BUDGET, budget);
             message.setObject(MessageProperty.ACCOUNT, account);
 
-            messageBus.fireEvent(message);
+            this.messageBus.fireEvent(message);
 
             logger.log(Level.FINE, "Budget goal updated for {0}", account.getPathName());
         } finally {
-            dataLock.writeLock().unlock();
+            this.dataLock.writeLock().unlock();
         }
     }
 
@@ -2373,12 +2415,12 @@ public class Engine {
 
         boolean result;
 
-        dataLock.writeLock().lock();
+        this.dataLock.writeLock().lock();
 
         try {
             Message message;
 
-            result = getBudgetDAO().update(budget);
+            result = this.getBudgetDAO().update(budget);
 
             if (result) {
                 message = new Message(MessageChannel.BUDGET, ChannelEvent.BUDGET_UPDATE, this);
@@ -2387,37 +2429,37 @@ public class Engine {
             }
 
             message.setObject(MessageProperty.BUDGET, budget);
-            messageBus.fireEvent(message);
+            this.messageBus.fireEvent(message);
 
             logger.log(Level.FINE, "Budget updated");
 
             return result;
 
         } finally {
-            dataLock.writeLock().unlock();
+            this.dataLock.writeLock().unlock();
         }
     }
 
-    public List<Budget> getBudgetList() {
+    public java.util.List<Budget> getBudgetList() {
 
-        dataLock.readLock().lock();
+        this.dataLock.readLock().lock();
 
         try {
-            return getBudgetDAO().getBudgets();
+            return this.getBudgetDAO().getBudgets();
         } finally {
-            dataLock.readLock().unlock();
+            this.dataLock.readLock().unlock();
         }
     }
 
     public Budget getBudgetByUuid(final UUID uuid) {
-        return getBudgetDAO().getBudgetByUuid(uuid);
+        return this.getBudgetDAO().getBudgetByUuid(uuid);
     }
 
     public boolean isTransactionValid(final Transaction transaction) {
 
         for (final Account a : transaction.getAccounts()) {
             if (a.isLocked()) {
-                logWarning(rb.getString("Message.TransactionAccountLocked"));
+                logWarning(this.rb.getString("Message.TransactionAccountLocked"));
                 return false;
             }
         }
@@ -2427,7 +2469,7 @@ public class Engine {
             return false;
         }
 
-        if (eDAO.getObjectByUuid(Transaction.class, transaction.getUuid()) != null) {
+        if (this.eDAO.getObjectByUuid(Transaction.class, transaction.getUuid()) != null) {
             logger.log(Level.WARNING, "Transaction UUID was not unique");
             return false;
         }
@@ -2473,7 +2515,7 @@ public class Engine {
             }
         }
 
-        if (transaction.getTransactionType() == TransactionType.SPLITENTRY && transaction.getCommonAccount() == null) {
+        if ((transaction.getTransactionType() == TransactionType.SPLITENTRY) && (transaction.getCommonAccount() == null)) {
             logger.log(Level.WARNING, "Entries do not share a common account");
             return false;
         }
@@ -2497,85 +2539,91 @@ public class Engine {
      * @return true if persisted
      */
     public boolean isStored(final StoredObject object) {
-        return eDAO.getObjectByUuid(StoredObject.class, object.getUuid()) != null;
+        return this.eDAO.getObjectByUuid(StoredObject.class, object.getUuid()) != null;
     }
 
     public boolean addTransaction(final Transaction transaction) {
 
-        dataLock.writeLock().lock();
+        this.dataLock.writeLock().lock();
 
         try {
-            boolean result = isTransactionValid(transaction);
+            boolean result = this.isTransactionValid(transaction);
 
             if (result) {
                 /* Add the transaction to each account */
-                transaction.getAccounts().stream()
+                transaction
+                    .getAccounts()
+                        .stream()
                         .filter(account -> !account.addTransaction(transaction))
                         .forEach(account -> logSevere("Failed to add the Transaction"));
-                result = getTransactionDAO().addTransaction(transaction);
+                result = this.getTransactionDAO().addTransaction(transaction);
 
-                logInfo(rb.getString("Message.TransactionAdd"));
+                logInfo(this.rb.getString("Message.TransactionAdd"));
 
                 /* If successful, extract and enter a default exchange rate for the transaction date if a rate has not been set */
                 if (result) {
                     // no rate for the date has been set
-                    transaction.getTransactionEntries().stream()
-                            .filter(TransactionEntry::isMultiCurrency)
-                            .forEach(entry -> {
-                                final ExchangeRate rate = getExchangeRate(entry.getDebitAccount().getCurrencyNode(),
-                                        entry.getCreditAccount().getCurrencyNode());
+                    transaction.getTransactionEntries().stream().filter(TransactionEntry::isMultiCurrency).forEach(entry -> {
+                        final ExchangeRate rate = this
+                            .getExchangeRate(entry.getDebitAccount().getCurrencyNode(), entry.getCreditAccount().getCurrencyNode());
 
-                                if (rate.getRate(transaction.getLocalDate()).compareTo(BigDecimal.ZERO) == 0) { // no rate for the date has been set
-                                    final BigDecimal exchangeRate = entry.getDebitAmount().abs()
-                                                                            .divide(entry.getCreditAmount().abs(),
-                                                                                    MathConstants.mathContext);
+                        if (rate.getRate(transaction.getLocalDate()).compareTo(BigDecimal.ZERO) == 0) { // no rate for the date has been set
+                            final BigDecimal exchangeRate = entry
+                                .getDebitAmount()
+                                    .abs()
+                                    .divide(entry.getCreditAmount().abs(), MathConstants.mathContext);
 
-                                    setExchangeRate(entry.getCreditAccount().getCurrencyNode(),
-                                            entry.getDebitAccount().getCurrencyNode(), exchangeRate, transaction.getLocalDate());
-                                }
-                            });
+                            this
+                                .setExchangeRate(entry.getCreditAccount().getCurrencyNode(),
+                                    entry.getDebitAccount().getCurrencyNode(),
+                                    exchangeRate,
+                                    transaction.getLocalDate());
+                        }
+                    });
                 }
             }
 
-            postTransactionAdd(transaction, result);
+            this.postTransactionAdd(transaction, result);
 
             return result;
         } finally {
-            dataLock.writeLock().unlock();
+            this.dataLock.writeLock().unlock();
         }
     }
 
     public boolean removeTransaction(final Transaction transaction) {
 
-        dataLock.writeLock().lock();
+        this.dataLock.writeLock().lock();
 
         try {
             for (final Account account : transaction.getAccounts()) {
                 if (account.isLocked()) {
-                    logWarning(rb.getString("Message.TransactionRemoveLocked"));
+                    logWarning(this.rb.getString("Message.TransactionRemoveLocked"));
                     return false;
                 }
             }
 
             /* Remove the transaction from each account */
-            transaction.getAccounts().stream()
+            transaction
+                .getAccounts()
+                    .stream()
                     .filter(account -> !account.removeTransaction(transaction))
                     .forEach(account -> logSevere("Failed to remove the Transaction"));
 
-            logInfo(rb.getString("Message.TransactionRemove"));
+            logInfo(this.rb.getString("Message.TransactionRemove"));
 
-            boolean result = getTransactionDAO().removeTransaction(transaction);
+            final boolean result = this.getTransactionDAO().removeTransaction(transaction);
 
             // move transactions into the trash
             if (result) {
-                moveObjectToTrash(transaction);
+                this.moveObjectToTrash(transaction);
             }
 
-            postTransactionRemove(transaction, result);
+            this.postTransactionRemove(transaction, result);
 
             return result;
         } finally {
-            dataLock.writeLock().unlock();
+            this.dataLock.writeLock().unlock();
         }
     }
 
@@ -2587,48 +2635,48 @@ public class Engine {
      * @param state       new reconciled state
      */
     public void setTransactionReconciled(final Transaction transaction, final Account account, final ReconciledState state) {
-        dataLock.writeLock().lock(); // hold a write lock to ensure nothing slips in between the remove and add
+        this.dataLock.writeLock().lock(); // hold a write lock to ensure nothing slips in between the remove and add
 
         try {
             final Transaction newTransaction = (Transaction) transaction.clone();
 
             ReconcileManager.reconcileTransaction(account, newTransaction, state);
 
-            if (removeTransaction(transaction)) {
-                addTransaction(newTransaction);
+            if (this.removeTransaction(transaction)) {
+                this.addTransaction(newTransaction);
             }
         } catch (final CloneNotSupportedException e) {
             logger.log(Level.SEVERE, "Failed to reconcile the Transaction", e);
         } finally {
-            dataLock.writeLock().unlock();
+            this.dataLock.writeLock().unlock();
         }
     }
 
-    public List<String> getTransactionNumberList() {
-        dataLock.readLock().lock();
+    public java.util.List<String> getTransactionNumberList() {
+        this.dataLock.readLock().lock();
 
         try {
-            return getConfig().getTransactionNumberList();
+            return this.getConfig().getTransactionNumberList();
         } finally {
-            dataLock.readLock().unlock();
+            this.dataLock.readLock().unlock();
         }
     }
 
-    public void setTransactionNumberList(final List<String> list) {
-        dataLock.writeLock().lock();
+    public void setTransactionNumberList(final java.util.List<String> list) {
+        this.dataLock.writeLock().lock();
 
         try {
-            final Config transactionConfig = getConfig();
+            final Config transactionConfig = this.getConfig();
 
             transactionConfig.setTransactionNumberList(list);
-            getConfigDAO().update(transactionConfig);
+            this.getConfigDAO().update(transactionConfig);
 
-            Message message = new Message(MessageChannel.CONFIG, ChannelEvent.CONFIG_MODIFY, this);
+            final Message message = new Message(MessageChannel.CONFIG, ChannelEvent.CONFIG_MODIFY, this);
             message.setObject(MessageProperty.CONFIG, transactionConfig);
 
-            messageBus.fireEvent(message);
+            this.messageBus.fireEvent(message);
         } finally {
-            dataLock.writeLock().unlock();
+            this.dataLock.writeLock().unlock();
         }
     }
 
@@ -2637,8 +2685,8 @@ public class Engine {
      *
      * @return List of transactions that may be altered without concern of side effects
      */
-    public List<Transaction> getTransactions() {
-        return getTransactionDAO().getTransactions();
+    public java.util.List<Transaction> getTransactions() {
+        return this.getTransactionDAO().getTransactions();
     }
 
     /**
@@ -2646,17 +2694,17 @@ public class Engine {
      *
      * @return List of transactions that may be altered without concern of side effects
      */
-    public List<Transaction> getTransactionsWithAttachments() {
-        return getTransactionDAO().getTransactionsWithAttachments();
+    public java.util.List<Transaction> getTransactionsWithAttachments() {
+        return this.getTransactionDAO().getTransactionsWithAttachments();
     }
 
     public Transaction getTransactionByUuid(final UUID uuid) {
-        return getTransactionDAO().getTransactionByUuid(uuid);
+        return this.getTransactionDAO().getTransactionByUuid(uuid);
     }
 
     private void postTransactionAdd(final Transaction transaction, final boolean result) {
 
-        for (Account a : transaction.getAccounts()) {
+        for (final Account a : transaction.getAccounts()) {
             Message message;
 
             if (result) {
@@ -2667,13 +2715,13 @@ public class Engine {
             message.setObject(MessageProperty.ACCOUNT, a);
             message.setObject(MessageProperty.TRANSACTION, transaction);
 
-            messageBus.fireEvent(message);
+            this.messageBus.fireEvent(message);
         }
     }
 
     private void postTransactionRemove(final Transaction transaction, final boolean result) {
 
-        for (Account a : transaction.getAccounts()) {
+        for (final Account a : transaction.getAccounts()) {
             Message message;
 
             if (result) {
@@ -2684,7 +2732,7 @@ public class Engine {
             message.setObject(MessageProperty.ACCOUNT, a);
             message.setObject(MessageProperty.TRANSACTION, transaction);
 
-            messageBus.fireEvent(message);
+            this.messageBus.fireEvent(message);
         }
     }
 
@@ -2694,22 +2742,21 @@ public class Engine {
      * @param tag Tag to add
      * @return true is successful
      */
-    public boolean addTag(@NotNull Tag tag) {
+    public boolean addTag(@NotNull final Tag tag) {
         Objects.requireNonNull(tag);
 
-        dataLock.writeLock().lock();
+        this.dataLock.writeLock().lock();
 
         try {
-            boolean result = eDAO.getTagDAO().add(tag);
+            final boolean result = this.eDAO.getTagDAO().add(tag);
 
-            final Message message = new Message(MessageChannel.TAG, result ? ChannelEvent.TAG_ADD
-                                                                            : ChannelEvent.TAG_ADD_FAILED, this);
+            final Message message = new Message(MessageChannel.TAG, result ? ChannelEvent.TAG_ADD : ChannelEvent.TAG_ADD_FAILED, this);
             message.setObject(MessageProperty.TAG, tag);
-            messageBus.fireEvent(message);
+            this.messageBus.fireEvent(message);
 
             return result;
         } finally {
-            dataLock.writeLock().unlock();
+            this.dataLock.writeLock().unlock();
         }
     }
 
@@ -2719,22 +2766,22 @@ public class Engine {
      * @param tag Tag to update
      * @return true is successful
      */
-    public boolean updateTag(@NotNull Tag tag) {
+    public boolean updateTag(@NotNull final Tag tag) {
         Objects.requireNonNull(tag);
 
-        dataLock.writeLock().lock();
+        this.dataLock.writeLock().lock();
 
         try {
-            boolean result = eDAO.getTagDAO().update(tag);
+            final boolean result = this.eDAO.getTagDAO().update(tag);
 
-            final Message message = new Message(MessageChannel.TAG, result ? ChannelEvent.TAG_MODIFY
-                                                                            : ChannelEvent.TAG_MODIFY_FAILED, this);
+            final Message message = new Message(MessageChannel.TAG, result ? ChannelEvent.TAG_MODIFY : ChannelEvent.TAG_MODIFY_FAILED,
+                this);
             message.setObject(MessageProperty.TAG, tag);
-            messageBus.fireEvent(message);
+            this.messageBus.fireEvent(message);
 
             return result;
         } finally {
-            dataLock.writeLock().unlock();
+            this.dataLock.writeLock().unlock();
         }
     }
 
@@ -2745,12 +2792,12 @@ public class Engine {
      */
     @NotNull
     public Set<Tag> getTags() {
-        dataLock.readLock().lock();
+        this.dataLock.readLock().lock();
 
         try {
-            return eDAO.getTagDAO().getTags();
+            return this.eDAO.getTagDAO().getTags();
         } finally {
-            dataLock.readLock().unlock();
+            this.dataLock.readLock().unlock();
         }
     }
 
@@ -2761,15 +2808,16 @@ public class Engine {
      */
     @NotNull
     public Set<Tag> getTagsInUse() {
-        dataLock.readLock().lock();
+        this.dataLock.readLock().lock();
 
         try {
-            return getTransactions()
-                           .parallelStream()
-                           .flatMap((Function<Transaction, Stream<Tag>>) transaction -> transaction.getTags().stream())
-                           .collect(Collectors.toSet());
+            return this
+                .getTransactions()
+                    .parallelStream()
+                    .flatMap((Function<Transaction, Stream<Tag>>) transaction -> transaction.getTags().stream())
+                    .collect(Collectors.toSet());
         } finally {
-            dataLock.readLock().unlock();
+            this.dataLock.readLock().unlock();
         }
     }
 
@@ -2781,26 +2829,26 @@ public class Engine {
      * @param tag Tag to remove
      * @return true if successful
      */
-    public boolean removeTag(@NotNull Tag tag) {
+    public boolean removeTag(@NotNull final Tag tag) {
         Objects.requireNonNull(tag);
 
-        dataLock.writeLock().lock();
+        this.dataLock.writeLock().lock();
 
         try {
-            boolean result = !getTagsInUse().contains(tag);  // make sure the tag is not used
+            boolean result = !this.getTagsInUse().contains(tag); // make sure the tag is not used
 
             if (result) {
-                result = moveObjectToTrash(tag);
+                result = this.moveObjectToTrash(tag);
             }
 
-            final Message message = new Message(MessageChannel.TAG, result ? ChannelEvent.TAG_REMOVE
-                                                                            : ChannelEvent.TAG_REMOVE_FAILED, this);
+            final Message message = new Message(MessageChannel.TAG, result ? ChannelEvent.TAG_REMOVE : ChannelEvent.TAG_REMOVE_FAILED,
+                this);
             message.setObject(MessageProperty.TAG, tag);
-            messageBus.fireEvent(message);
+            this.messageBus.fireEvent(message);
 
             return result;
         } finally {
-            dataLock.writeLock().unlock();
+            this.dataLock.writeLock().unlock();
         }
     }
 
@@ -2810,43 +2858,43 @@ public class Engine {
      * @return uuid
      */
     public String getUuid() {
-        return uuid;
+        return this.uuid;
     }
 
     public void setPreference(@NotNull final String key, @Nullable final String value) {
-        dataLock.writeLock().lock();
+        this.dataLock.writeLock().lock();
 
         try {
-            getConfig().setPreference(key, value);
-            getConfigDAO().update(getConfig());
+            this.getConfig().setPreference(key, value);
+            this.getConfigDAO().update(this.getConfig());
 
-            config = null;  // clear stale cached reference
+            this.config = null; // clear stale cached reference
 
-            Message message = new Message(MessageChannel.CONFIG, ChannelEvent.CONFIG_MODIFY, this);
-            message.setObject(MessageProperty.CONFIG, getConfig());
-            messageBus.fireEvent(message);
+            final Message message = new Message(MessageChannel.CONFIG, ChannelEvent.CONFIG_MODIFY, this);
+            message.setObject(MessageProperty.CONFIG, this.getConfig());
+            this.messageBus.fireEvent(message);
         } finally {
-            dataLock.writeLock().unlock();
+            this.dataLock.writeLock().unlock();
         }
     }
 
     @Nullable
     public String getPreference(@NotNull final String key) {
-        dataLock.readLock().lock();
+        this.dataLock.readLock().lock();
 
         try {
-            return getConfig().getPreference(key);
+            return this.getConfig().getPreference(key);
         } finally {
-            dataLock.readLock().unlock();
+            this.dataLock.readLock().unlock();
         }
     }
 
     public boolean getBoolean(@NotNull final String key, final boolean defaultValue) {
         boolean value = defaultValue;
 
-        final String stringResult = getPreference(key);
+        final String stringResult = this.getPreference(key);
 
-        if (stringResult != null && !stringResult.isEmpty()) {
+        if ((stringResult != null) && !stringResult.isEmpty()) {
             value = Boolean.parseBoolean(stringResult);
         }
 
@@ -2854,75 +2902,75 @@ public class Engine {
     }
 
     public void putBoolean(@NotNull final String key, final boolean value) {
-        setPreference(key, Boolean.toString(value));
+        this.setPreference(key, Boolean.toString(value));
     }
 
     public boolean createBackups() {
-        return getConfig().createBackups();
+        return this.getConfig().createBackups();
     }
 
     public void setCreateBackups(final boolean createBackups) {
-        dataLock.writeLock().lock();
+        this.dataLock.writeLock().lock();
 
         try {
-            final Config backupConfig = getConfig();
+            final Config backupConfig = this.getConfig();
 
             backupConfig.setCreateBackups(createBackups);
-            getConfigDAO().update(backupConfig);
+            this.getConfigDAO().update(backupConfig);
 
-            config = null;  // clear stale cached reference
+            this.config = null; // clear stale cached reference
 
-            Message message = new Message(MessageChannel.CONFIG, ChannelEvent.CONFIG_MODIFY, this);
+            final Message message = new Message(MessageChannel.CONFIG, ChannelEvent.CONFIG_MODIFY, this);
             message.setObject(MessageProperty.CONFIG, backupConfig);
-            messageBus.fireEvent(message);
+            this.messageBus.fireEvent(message);
         } finally {
-            dataLock.writeLock().unlock();
+            this.dataLock.writeLock().unlock();
         }
     }
 
     public int getRetainedBackupLimit() {
-        return getConfig().getRetainedBackupLimit();
+        return this.getConfig().getRetainedBackupLimit();
     }
 
     public void setRetainedBackupLimit(final int retainedBackupLimit) {
-        dataLock.writeLock().lock();
+        this.dataLock.writeLock().lock();
 
         try {
-            final Config backupConfig = getConfig();
+            final Config backupConfig = this.getConfig();
 
             backupConfig.setRetainedBackupLimit(retainedBackupLimit);
-            getConfigDAO().update(backupConfig);
+            this.getConfigDAO().update(backupConfig);
 
-            config = null;  // clear stale cached reference
+            this.config = null; // clear stale cached reference
 
-            Message message = new Message(MessageChannel.CONFIG, ChannelEvent.CONFIG_MODIFY, this);
+            final Message message = new Message(MessageChannel.CONFIG, ChannelEvent.CONFIG_MODIFY, this);
             message.setObject(MessageProperty.CONFIG, backupConfig);
-            messageBus.fireEvent(message);
+            this.messageBus.fireEvent(message);
         } finally {
-            dataLock.writeLock().unlock();
+            this.dataLock.writeLock().unlock();
         }
     }
 
     public boolean removeOldBackups() {
-        return getConfig().removeOldBackups();
+        return this.getConfig().removeOldBackups();
     }
 
     public void setRemoveOldBackups(final boolean removeOldBackups) {
-        dataLock.writeLock().lock();
+        this.dataLock.writeLock().lock();
 
         try {
-            final Config backupConfig = getConfig();
+            final Config backupConfig = this.getConfig();
 
             backupConfig.setRemoveOldBackups(removeOldBackups);
-            getConfigDAO().update(backupConfig);
+            this.getConfigDAO().update(backupConfig);
 
-            config = null;  // clear stale cached reference
+            this.config = null; // clear stale cached reference
 
-            Message message = new Message(MessageChannel.CONFIG, ChannelEvent.CONFIG_MODIFY, this);
+            final Message message = new Message(MessageChannel.CONFIG, ChannelEvent.CONFIG_MODIFY, this);
             message.setObject(MessageProperty.CONFIG, backupConfig);
-            messageBus.fireEvent(message);
+            this.messageBus.fireEvent(message);
         } finally {
-            dataLock.writeLock().unlock();
+            this.dataLock.writeLock().unlock();
         }
     }
 
@@ -2942,8 +2990,8 @@ public class Engine {
                 for (final DayOfWeek dayOfWeek : daysOfWeek) {
                     if (historyNode.getLocalDate().getDayOfWeek() == dayOfWeek) {
 
-                        backgroundExecutorService.schedule(new BackgroundCallable(() -> {
-                            removeSecurityHistory(securityNode, historyNode.getLocalDate());
+                        this.backgroundExecutorService.schedule(new BackgroundCallable(() -> {
+                            this.removeSecurityHistory(securityNode, historyNode.getLocalDate());
                             return true;
                         }), delay, TimeUnit.MILLISECONDS);
 
@@ -2963,10 +3011,10 @@ public class Engine {
      */
     private class SecuritiesUpdateRunnable extends Thread {
 
-        private final List<BackgroundCallable> backgroundCallables;
+        private final java.util.List<BackgroundCallable> backgroundCallables;
         private final int delay;
 
-        SecuritiesUpdateRunnable(final List<BackgroundCallable> callables, final int delay) {
+        SecuritiesUpdateRunnable(final java.util.List<BackgroundCallable> callables, final int delay) {
             this.backgroundCallables = callables;
             this.delay = delay;
         }
@@ -2975,17 +3023,17 @@ public class Engine {
         public void run() {
 
             try {
-                TimeUnit.SECONDS.sleep(delay);  // for controlled delay at startup
+                TimeUnit.SECONDS.sleep(this.delay); // for controlled delay at startup
             } catch (final InterruptedException ignored) {
                 return;
             }
 
             int errors = 0;
 
-            final CompletionService<Boolean> completionService = new ExecutorCompletionService<>(backgroundExecutorService);
+            final CompletionService<Boolean> completionService = new ExecutorCompletionService<>(Engine.this.backgroundExecutorService);
 
             // submit the callables
-            for (final BackgroundCallable backgroundCallable : backgroundCallables) {
+            for (final BackgroundCallable backgroundCallable : this.backgroundCallables) {
                 try {
                     completionService.submit(backgroundCallable);
                 } catch (final RejectedExecutionException ignored) {
@@ -2994,11 +3042,11 @@ public class Engine {
             }
 
             // poll until complete or there have been too many errors
-            while (errors < MAX_ERRORS && !Thread.currentThread().isInterrupted()) {
+            while ((errors < MAX_ERRORS) && !Thread.currentThread().isInterrupted()) {
                 try {
                     final Future<Boolean> future = completionService.poll(1, TimeUnit.MINUTES);
 
-                    if (future == null) {   // all done, no issues
+                    if (future == null) { // all done, no issues
                         break;
                     }
 
@@ -3011,9 +3059,9 @@ public class Engine {
             }
 
             // if there are too many errors, force cancellation
-            if (errors > MAX_ERRORS || Thread.currentThread().isInterrupted()) {
-                for (final BackgroundCallable backgroundCallable : backgroundCallables) {
-                    backgroundCallable.cancel = true;   // stop all other callables
+            if ((errors > MAX_ERRORS) || Thread.currentThread().isInterrupted()) {
+                for (final BackgroundCallable backgroundCallable : this.backgroundCallables) {
+                    backgroundCallable.cancel = true; // stop all other callables
                 }
             }
         }
@@ -3026,27 +3074,28 @@ public class Engine {
 
         private final Callable<Boolean> callable;
 
-        volatile boolean cancel = false;    // may be set to true to interrupt operation
+        volatile boolean cancel = false; // may be set to true to interrupt operation
 
         BackgroundCallable(@NotNull final Callable<Boolean> callable) {
             this.callable = callable;
         }
 
         @Override
-        public Boolean call() throws Exception {
+        public Boolean call()
+            throws Exception {
 
-            if (!cancel) {
-                if (backGroundCounter.incrementAndGet() == 1) {
-                    messageBus.fireEvent(new Message(MessageChannel.SYSTEM, ChannelEvent.BACKGROUND_PROCESS_STARTED,
-                            Engine.this));
+            if (!this.cancel) {
+                if (Engine.this.backGroundCounter.incrementAndGet() == 1) {
+                    Engine.this.messageBus
+                        .fireEvent(new Message(MessageChannel.SYSTEM, ChannelEvent.BACKGROUND_PROCESS_STARTED, Engine.this));
                 }
 
                 try {
-                    return callable.call();
+                    return this.callable.call();
                 } finally {
-                    if (backGroundCounter.decrementAndGet() == 0) {
-                        messageBus.fireEvent(new Message(MessageChannel.SYSTEM, ChannelEvent.BACKGROUND_PROCESS_STOPPED,
-                                Engine.this));
+                    if (Engine.this.backGroundCounter.decrementAndGet() == 0) {
+                        Engine.this.messageBus
+                            .fireEvent(new Message(MessageChannel.SYSTEM, ChannelEvent.BACKGROUND_PROCESS_STOPPED, Engine.this));
                     }
                 }
             }

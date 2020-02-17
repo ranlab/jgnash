@@ -17,6 +17,17 @@
  */
 package jgnash.uifx.views.main;
 
+import java.io.File;
+import java.text.MessageFormat;
+import java.util.ResourceBundle;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
+import java.util.logging.Handler;
+import java.util.logging.Level;
+import java.util.logging.LogRecord;
+import java.util.logging.Logger;
+import java.util.prefs.Preferences;
+
 import javafx.application.Platform;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.WeakChangeListener;
@@ -34,7 +45,6 @@ import javafx.stage.Stage;
 import javafx.stage.WindowEvent;
 import jgnash.engine.Engine;
 import jgnash.engine.EngineFactory;
-import jgnash.engine.message.Message;
 import jgnash.engine.message.MessageBus;
 import jgnash.engine.message.MessageChannel;
 import jgnash.engine.message.MessageListener;
@@ -42,12 +52,14 @@ import jgnash.net.security.UpdateFactory;
 import jgnash.plugin.FxPlugin;
 import jgnash.plugin.Plugin;
 import jgnash.plugin.PluginFactory;
-import jgnash.uifx.resource.font.FontAwesomeLabel;
+import jgnash.resource.util.ResourceUtils;
+import jgnash.resource.util.Version;
 import jgnash.uifx.Options;
 import jgnash.uifx.StaticUIMethods;
 import jgnash.uifx.control.BusyPane;
 import jgnash.uifx.control.StatusBar;
 import jgnash.uifx.control.TabViewPane;
+import jgnash.uifx.resource.font.FontAwesomeLabel;
 import jgnash.uifx.skin.ThemeManager;
 import jgnash.uifx.tasks.BootEngineTask;
 import jgnash.uifx.tasks.CloseFileTask;
@@ -61,19 +73,6 @@ import jgnash.uifx.views.register.RegisterViewController;
 import jgnash.util.DefaultDaemonThreadFactory;
 import jgnash.util.NotNull;
 import jgnash.util.Nullable;
-import jgnash.resource.util.ResourceUtils;
-import jgnash.resource.util.Version;
-
-import java.io.File;
-import java.text.MessageFormat;
-import java.util.ResourceBundle;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
-import java.util.logging.Handler;
-import java.util.logging.Level;
-import java.util.logging.LogRecord;
-import java.util.logging.Logger;
-import java.util.prefs.Preferences;
 
 /**
  * JavaFX version of jGnash.
@@ -90,8 +89,8 @@ public class MainView implements MessageListener {
 
     private final ResourceBundle resources = ResourceUtils.getBundle();
 
-    private final Executor backgroundExecutor =
-            Executors.newSingleThreadExecutor(new DefaultDaemonThreadFactory("Main View Background Executor"));
+    private final Executor backgroundExecutor = Executors
+        .newSingleThreadExecutor(new DefaultDaemonThreadFactory("Main View Background Executor"));
 
     private final StatusBarLogHandler statusBarLogHandler = new StatusBarLogHandler();
 
@@ -142,8 +141,8 @@ public class MainView implements MessageListener {
      * @return the first first node with the matching id.  Returns null if not found
      * @see Node#lookup(String)
      */
-    public Node lookup(@NotNull String selector) {
-        return primaryStage.getScene().lookup(selector);
+    public Node lookup(@NotNull final String selector) {
+        return this.primaryStage.getScene().lookup(selector);
     }
 
     /**
@@ -152,41 +151,54 @@ public class MainView implements MessageListener {
      * @return Application {@code MenuBar}
      */
     public MenuBar getMenuBar() {
-        return menuBar;
+        return this.menuBar;
     }
 
-    public void start(final Stage stage, @Nullable final File dataFile, final char[] password,
-                      @Nullable final String host, final int port) throws Exception {
+    /**
+     *
+     * @param stage
+     * @param dataFile
+     * @param password
+     * @param host
+     * @param port
+     * @throws java.lang.Exception
+     */
+    public void start(final javafx.stage.Stage stage,
+        @Nullable final File dataFile,
+        final char[] password,
+        @Nullable final String host,
+        final int port)
+        throws java.lang.Exception {
         ThemeManager.restoreLastUsedTheme();
 
-        primaryStage = stage;
+        this.primaryStage = stage;
 
-        busyPane = new BusyPane();
+        this.busyPane = new BusyPane();
 
         try {
-            final FXMLLoader fxmlLoader = new FXMLLoader(MenuBarController.class.getResource("MainMenuBar.fxml"), resources);
-            menuBar = fxmlLoader.load();
+            final FXMLLoader fxmlLoader = new FXMLLoader(MenuBarController.class.getResource("MainMenuBar.fxml"), this.resources);
+            this.menuBar = fxmlLoader.load();
         } catch (final Exception e) {
             logger.log(Level.SEVERE, e.getLocalizedMessage(), e);
         }
 
-        final ToolBar mainToolBar = FXMLLoader.load(MainToolBarController.class.getResource("MainToolBar.fxml"), resources);
+        final ToolBar mainToolBar = FXMLLoader.load(MainToolBarController.class.getResource("MainToolBar.fxml"), this.resources);
 
-        tabViewPane = new TabViewPane();
+        this.tabViewPane = new TabViewPane();
 
         final VBox top = new VBox();
-        top.getChildren().addAll(menuBar, mainToolBar);
+        top.getChildren().addAll(this.menuBar, mainToolBar);
         top.setFillWidth(true);
 
-        statusBar = new StatusBar();
+        this.statusBar = new StatusBar();
 
         final BorderPane borderPane = new BorderPane();
         borderPane.setTop(top);
-        borderPane.setCenter(tabViewPane);
-        borderPane.setBottom(statusBar);
+        borderPane.setCenter(this.tabViewPane);
+        borderPane.setBottom(this.statusBar);
 
         final StackPane stackPane = new StackPane();
-        stackPane.getChildren().addAll(borderPane, busyPane);
+        stackPane.getChildren().addAll(borderPane, this.busyPane);
 
         final Scene scene = new Scene(stackPane, 640, 480);
         ThemeManager.applyStyleSheets(scene);
@@ -210,10 +222,10 @@ public class MainView implements MessageListener {
 
         stage.show();
 
-        Engine.addLogHandler(statusBarLogHandler);
-        EngineFactory.addLogHandler(statusBarLogHandler);
-        UpdateFactory.addLogHandler(statusBarLogHandler);
-        logger.addHandler(statusBarLogHandler); // listen to my own logger
+        Engine.addLogHandler(this.statusBarLogHandler);
+        EngineFactory.addLogHandler(this.statusBarLogHandler);
+        UpdateFactory.addLogHandler(this.statusBarLogHandler);
+        logger.addHandler(this.statusBarLogHandler); // listen to my own logger
 
         stage.toFront();
         stage.requestFocus();
@@ -222,9 +234,9 @@ public class MainView implements MessageListener {
             new Thread(() -> {
                 try {
                     Thread.sleep(BootEngineTask.FORCED_DELAY);
-                    backgroundExecutor.execute(() -> JavaFXUtils.runLater(()
-                            -> BootEngineTask.initiateBoot(null, password, true, host, port)));
-                } catch (InterruptedException e) {
+                    this.backgroundExecutor
+                        .execute(() -> JavaFXUtils.runLater(() -> BootEngineTask.initiateBoot(null, password, true, host, port)));
+                } catch (final InterruptedException e) {
                     logger.log(Level.SEVERE, e.getLocalizedMessage(), e);
                     Thread.currentThread().interrupt();
                 }
@@ -233,9 +245,10 @@ public class MainView implements MessageListener {
             new Thread(() -> {
                 try {
                     Thread.sleep(BootEngineTask.FORCED_DELAY);
-                    backgroundExecutor.execute(() -> JavaFXUtils.runLater(()
-                            -> BootEngineTask.initiateBoot(dataFile.getAbsolutePath(), password, false, null, 0)));
-                } catch (InterruptedException e) {
+                    this.backgroundExecutor
+                        .execute(() -> JavaFXUtils
+                            .runLater(() -> BootEngineTask.initiateBoot(dataFile.getAbsolutePath(), password, false, null, 0)));
+                } catch (final InterruptedException e) {
                     logger.log(Level.SEVERE, e.getLocalizedMessage(), e);
                     Thread.currentThread().interrupt();
                 }
@@ -244,8 +257,8 @@ public class MainView implements MessageListener {
             new Thread(() -> {
                 try {
                     Thread.sleep(BootEngineTask.FORCED_DELAY);
-                    backgroundExecutor.execute(() -> JavaFXUtils.runLater(BootEngineTask::openLast));
-                } catch (InterruptedException e) {
+                    this.backgroundExecutor.execute(() -> JavaFXUtils.runLater(BootEngineTask::openLast));
+                } catch (final InterruptedException e) {
                     logger.log(Level.SEVERE, e.getLocalizedMessage(), e);
                     Thread.currentThread().interrupt();
                 }
@@ -257,61 +270,72 @@ public class MainView implements MessageListener {
         checkForLatestRelease();
     }
 
+    /**
+     * Check for a newer jGnash-Version
+     */
     private static void checkForLatestRelease() {
         new Thread(() -> {
             try {
                 Thread.sleep(BootEngineTask.FORCED_DELAY * 3L);
                 if (Options.checkForUpdatesProperty().get()) {
-                    if (!Version.isReleaseCurrent()) {
-                        JavaFXUtils.runLater(() ->
-                                StaticUIMethods.displayMessage(ResourceUtils.getString("Message.NewVersion")));
+                    if (Version.isReleaseCurrent() == false) {
+                        JavaFXUtils.runLater(() -> StaticUIMethods.displayMessage(ResourceUtils.getString("Message.NewVersion")));
                     }
                     logger.info("Version check performed");
                 }
-            } catch (InterruptedException e) {
+            } catch (final InterruptedException e) {
                 logger.log(Level.SEVERE, e.getLocalizedMessage(), e);
                 Thread.currentThread().interrupt();
             }
         }).start();
     }
 
+    /**
+     * Open working tabs.
+     */
     private void addViews() {
-        backgroundExecutor.execute(() -> Platform.runLater(() -> tabViewPane.addTab(
-                FXMLUtils.load(AccountsViewController.class.getResource("AccountsView.fxml"), resources),
-                resources.getString("Tab.Accounts"))));
+        this.backgroundExecutor
+            .execute(() -> Platform
+                .runLater(() -> this.tabViewPane
+                    .addTab(FXMLUtils.load(AccountsViewController.class.getResource("AccountsView.fxml"), this.resources),
+                        this.resources.getString("Tab.Accounts"))));
 
-        backgroundExecutor.execute(() -> Platform.runLater(() -> tabViewPane.addTab(
-                FXMLUtils.load(RegisterViewController.class.getResource("RegisterView.fxml"), resources),
-                resources.getString("Tab.Register"))));
+        this.backgroundExecutor
+            .execute(() -> Platform
+                .runLater(() -> this.tabViewPane
+                    .addTab(FXMLUtils.load(RegisterViewController.class.getResource("RegisterView.fxml"), this.resources),
+                        this.resources.getString("Tab.Register"))));
 
-        backgroundExecutor.execute(() -> Platform.runLater(() -> tabViewPane.addTab(
-                FXMLUtils.load(RecurringViewController.class.getResource("RecurringView.fxml"), resources),
-                resources.getString("Tab.Reminders"))));
+        this.backgroundExecutor
+            .execute(() -> Platform
+                .runLater(() -> this.tabViewPane
+                    .addTab(FXMLUtils.load(RecurringViewController.class.getResource("RecurringView.fxml"), this.resources),
+                        this.resources.getString("Tab.Reminders"))));
 
-        backgroundExecutor.execute(() -> Platform.runLater(() -> tabViewPane.addTab(
-                FXMLUtils.load(BudgetViewController.class.getResource("BudgetView.fxml"), resources),
-                resources.getString("Tab.Budgeting"))));
+        this.backgroundExecutor
+            .execute(() -> Platform
+                .runLater(() -> this.tabViewPane
+                    .addTab(FXMLUtils.load(BudgetViewController.class.getResource("BudgetView.fxml"), this.resources),
+                        this.resources.getString("Tab.Budgeting"))));
 
-        backgroundExecutor.execute(() ->
-                Platform.runLater(() -> {
-                    tabViewPane.getSelectionModel().select(preferences.getInt(LAST_TAB, 0));
+        this.backgroundExecutor.execute(() -> Platform.runLater(() -> {
+            this.tabViewPane.getSelectionModel().select(this.preferences.getInt(LAST_TAB, 0));
 
-                    tabListener = (observable, oldValue, newValue) -> {
-                        if (newValue != null && newValue.intValue() > -1) { // -1 will occur when all tabs are removed
-                            preferences.putInt(LAST_TAB, newValue.intValue());
-                        }
-                    };
+            this.tabListener = (observable, oldValue, newValue) -> {
+                if ((newValue != null) && (newValue.intValue() > -1)) { // -1 will occur when all tabs are removed
+                    this.preferences.putInt(LAST_TAB, newValue.intValue());
+                }
+            };
 
-                    tabViewPane.getSelectionModel()
-                            .selectedIndexProperty().addListener(new WeakChangeListener<>(tabListener));
-                }));
+            this.tabViewPane.getSelectionModel().selectedIndexProperty().addListener(new WeakChangeListener<>(this.tabListener));
+        }));
     }
 
     private void removeViews() {
         // Push to the background executor so that a load before current load is finished won't trigger a NPE
-        backgroundExecutor.execute(() -> JavaFXUtils.runLater(() -> {
-            tabViewPane.getTabs().clear();
-            tabListener = null;
+        this.backgroundExecutor.execute(() -> JavaFXUtils.runLater(() -> {
+            this.tabViewPane.getTabs().clear();
+            this.tabListener = null;
         }));
     }
 
@@ -319,10 +343,10 @@ public class MainView implements MessageListener {
 
         // Close the file cleanly if it is still open
         getPrimaryStage().addEventHandler(WindowEvent.WINDOW_CLOSE_REQUEST, windowEvent -> {
-            PluginFactory.stopPlugins();    // Stop plugins
+            PluginFactory.stopPlugins(); // Stop plugins
 
             if (EngineFactory.getEngine(EngineFactory.DEFAULT) != null) {
-                windowEvent.consume();  // consume the event and let the shutdown handler deal with closure
+                windowEvent.consume(); // consume the event and let the shutdown handler deal with closure
                 CloseFileTask.initiateShutdown();
             }
         });
@@ -353,54 +377,58 @@ public class MainView implements MessageListener {
      * @param task long running {@code Task} to monitor
      */
     public void setBusy(@Nullable final Task<?> task) {
-        busyPane.setTask(task);
+        this.busyPane.setTask(task);
     }
 
     private static void loadPlugins() {
 
         // Wrap in an exception handler so a poorly behaving plugin does not prevent application startup
         try {
-            PluginFactory.loadPlugins(plugin -> plugin instanceof FxPlugin);    // Load only the Fx based plugins
+            PluginFactory.loadPlugins(plugin -> plugin instanceof FxPlugin); // Load only the Fx based plugins
             PluginFactory.startPlugins(Plugin.PluginPlatform.Fx);
         } catch (final Exception e) {
             logger.log(Level.SEVERE, e.getLocalizedMessage(), e);
         }
     }
 
+    /**
+     * Message arrived over bus.
+     * @param newEvent message event
+     */
     @Override
-    public void messagePosted(final Message event) {
-        switch (event.getEvent()) {
+    public void messagePosted(final jgnash.engine.message.Message newEvent) {
+        switch (newEvent.getEvent()) {
             case FILE_LOAD_SUCCESS:
                 JavaFXUtils.runLater(() -> {
-                    updateTitle();
-                    addViews();
+                    this.updateTitle();
+                    this.addViews();
                 });
                 break;
             case FILE_CLOSING:
                 JavaFXUtils.runLater(() -> {
-                    removeViews();
-                    updateTitle();
+                    this.removeViews();
+                    this.updateTitle();
                 });
                 break;
             case FILE_IO_ERROR:
-                logger.warning(resources.getString("Message.Error.IOError"));
-                StaticUIMethods.displayError(resources.getString("Message.Error.IOError"));
+                logger.warning(this.resources.getString("Message.Error.IOError"));
+                StaticUIMethods.displayError(this.resources.getString("Message.Error.IOError"));
                 break;
             case FILE_LOAD_FAILED:
-                logger.warning(resources.getString("Message.Error.LoadingFile"));
-                StaticUIMethods.displayError(resources.getString("Message.Error.LoadingFile"));
+                logger.warning(this.resources.getString("Message.Error.LoadingFile"));
+                StaticUIMethods.displayError(this.resources.getString("Message.Error.LoadingFile"));
                 break;
             case FILE_NOT_FOUND:
-                logger.warning(resources.getString("Message.Error.FileNotFound"));
+                logger.warning(this.resources.getString("Message.Error.FileNotFound"));
                 break;
             case ACCOUNT_REMOVE_FAILED:
-                StaticUIMethods.displayError(resources.getString("Message.Error.AccountRemove"));
+                StaticUIMethods.displayError(this.resources.getString("Message.Error.AccountRemove"));
                 break;
             case BACKGROUND_PROCESS_STARTED:
-                setBusyBackground(true);
+                this.setBusyBackground(true);
                 break;
             case BACKGROUND_PROCESS_STOPPED:
-                setBusyBackground(false);
+                this.setBusyBackground(false);
                 break;
             default:
                 break;
@@ -411,16 +439,16 @@ public class MainView implements MessageListener {
     private void setBusyBackground(final boolean busy) {
         JavaFXUtils.runLater(() -> {
             if (busy) {
-                statusBar.progressProperty().set(-1);
+                this.statusBar.progressProperty().set(-1);
             } else {
-                statusBar.progressProperty().set(0);
+                this.statusBar.progressProperty().set(0);
             }
         });
     }
 
     private void updateTitle() {
-        backgroundExecutor.execute(() -> {
-            Engine engine = EngineFactory.getEngine(EngineFactory.DEFAULT);
+        this.backgroundExecutor.execute(() -> {
+            final Engine engine = EngineFactory.getEngine(EngineFactory.DEFAULT);
 
             JavaFXUtils.runLater(() -> {
                 if (engine != null) {
@@ -430,7 +458,7 @@ public class MainView implements MessageListener {
                 }
             });
         });
-    }   
+    }
 
     private class StatusBarLogHandler extends Handler {
 
@@ -443,36 +471,36 @@ public class MainView implements MessageListener {
         final Node severe;
 
         StatusBarLogHandler() {
-            info = new FontAwesomeLabel(FontAwesomeLabel.FAIcon.INFO, GRAPHIC_SIZE);
-            warning = new FontAwesomeLabel(FontAwesomeLabel.FAIcon.EXCLAMATION_TRIANGLE, GRAPHIC_SIZE);
-            severe = new FontAwesomeLabel(FontAwesomeLabel.FAIcon.BUG, GRAPHIC_SIZE, Color.DARKRED);
+            this.info = new FontAwesomeLabel(FontAwesomeLabel.FAIcon.INFO, GRAPHIC_SIZE);
+            this.warning = new FontAwesomeLabel(FontAwesomeLabel.FAIcon.EXCLAMATION_TRIANGLE, GRAPHIC_SIZE);
+            this.severe = new FontAwesomeLabel(FontAwesomeLabel.FAIcon.BUG, GRAPHIC_SIZE, Color.DARKRED);
         }
 
         @Override
         public void close() {
-        	// not used
+            // not used
         }
 
         @Override
         public void flush() {
-        	// not used
+            // not used
         }
 
         @Override
         public synchronized void publish(final LogRecord record) {
             if (record.getLevel() == Level.INFO) {
-                updateStatus(MessageFormat.format(record.getMessage(), record.getParameters()), info);
+                this.updateStatus(MessageFormat.format(record.getMessage(), record.getParameters()), this.info);
             } else if (record.getLevel() == Level.WARNING) {
-                updateStatus(MessageFormat.format(record.getMessage(), record.getParameters()), warning);
+                this.updateStatus(MessageFormat.format(record.getMessage(), record.getParameters()), this.warning);
             } else if (record.getLevel() == Level.SEVERE) {
-                updateStatus(MessageFormat.format(record.getMessage(), record.getParameters()), severe);
+                this.updateStatus(MessageFormat.format(record.getMessage(), record.getParameters()), this.severe);
             }
         }
 
         private void updateStatus(final String status, final Node glyph) {
             JavaFXUtils.runLater(() -> {
-                statusBar.textProperty().set(status);
-                statusBar.graphicProperty().set(glyph);
+                MainView.this.statusBar.textProperty().set(status);
+                MainView.this.statusBar.graphicProperty().set(glyph);
             });
         }
     }
