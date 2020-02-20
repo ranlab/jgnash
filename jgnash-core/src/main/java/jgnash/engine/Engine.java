@@ -477,7 +477,10 @@ public class Engine {
                     .filter(account -> account.getAccountType() == null)
                     .collect(Collectors.toList());
             if (accountWithoutTypeList.size() > 0) {
-                logWarning(java.lang.String.format("%d Account without AccountType", accountWithoutTypeList.size()));
+                logWarning(java.lang.String
+                    .format("%d Account without AccountType. Set it to %s",
+                        accountWithoutTypeList.size(),
+                        jgnash.engine.AccountType.EXPENSE));
                 accountWithoutTypeList.stream().forEach(account -> account.setAccountType(jgnash.engine.AccountType.EXPENSE));
             }
 
@@ -487,7 +490,8 @@ public class Engine {
                     .filter(account -> account.getCurrencyNode() == null)
                     .collect(Collectors.toList());
             if (accountWithoutCurrencyList.size() > 0) {
-                logWarning(java.lang.String.format("%d Account without CurrencyNode", accountWithoutCurrencyList.size()));
+                logWarning(java.lang.String
+                    .format("%d Account without CurrencyNode. Set it to %s", accountWithoutCurrencyList.size(), this.getDefaultCurrency()));
                 accountWithoutTypeList.stream().forEach(account -> account.setCurrencyNode(this.getDefaultCurrency()));
             }
 
@@ -530,6 +534,7 @@ public class Engine {
                 localConfig.updateFileVersion();
                 this.getConfigDAO().update(localConfig);
             }
+
         } catch (final java.lang.Exception ex) {
             logSevere(ex.getMessage());
         } finally {

@@ -17,7 +17,15 @@
  */
 package jgnash.convert.importat.ofx;
 
-import jgnash.convert.exportantur.ofx.OfxExport;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.nio.file.Files;
+import java.time.LocalDate;
+
 import jgnash.convert.importat.ImportTransaction;
 import jgnash.engine.AbstractEngineTest;
 import jgnash.engine.DataStoreType;
@@ -25,46 +33,42 @@ import jgnash.engine.Engine;
 import jgnash.engine.EngineFactory;
 import jgnash.engine.Transaction;
 import jgnash.engine.TransactionFactory;
-import org.junit.jupiter.api.Test;
-
-import java.io.IOException;
-import java.math.BigDecimal;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.time.LocalDate;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class OfxExportText extends AbstractEngineTest {
 
     @Override
-    protected Engine createEngine() throws IOException {
-        database = testFolder.createFile("ofxExportTest.xml").getAbsolutePath();
+    protected Engine createEngine()
+        throws IOException {
+        this.database = this.testFolder.createFile("ofxExportTest.xml").getAbsolutePath();
 
-        EngineFactory.deleteDatabase(database);
+        EngineFactory.deleteDatabase(this.database);
 
-        return EngineFactory.bootLocalEngine(database, EngineFactory.DEFAULT, EngineFactory.EMPTY_PASSWORD,
-                DataStoreType.XML);
+        return EngineFactory.bootLocalEngine(this.database, EngineFactory.DEFAULT, EngineFactory.EMPTY_PASSWORD, DataStoreType.XML);
     }
 
-    @Test
-    void testExport() throws Exception {
+    @org.junit.jupiter.api.Test
+    void testExport()
+        throws java.lang.Exception {
 
-        Transaction transaction = TransactionFactory.generateDoubleEntryTransaction(checkingAccount, usdBankAccount,
-                BigDecimal.TEN, LocalDate.now(), "Transfer Test", "Transfer", "");
+        Transaction transaction = TransactionFactory
+            .generateDoubleEntryTransaction(this.checkingAccount,
+                this.usdBankAccount,
+                BigDecimal.TEN,
+                LocalDate.now(),
+                "Transfer Test",
+                "Transfer",
+                "");
 
-        assertTrue(e.addTransaction(transaction));
+        assertTrue(this.e.addTransaction(transaction));
 
-        Path path = Files.createTempFile("j", ".ofx");
+        java.nio.file.Path path = java.nio.file.Files.createTempFile("j", ".ofx");
 
-        OfxExport ofxExport = new OfxExport(usdBankAccount, LocalDate.now().minusDays(1), LocalDate.now().plusDays(1),
-                path.toFile());
+        jgnash.convert.exportantur.ofx.OfxExport ofxExport = new jgnash.convert.exportantur.ofx.OfxExport(this.usdBankAccount,
+            LocalDate.now().minusDays(1), LocalDate.now().plusDays(1), path.toFile());
 
         ofxExport.exportAccount();
 
-        assertTrue(Files.exists(path));
+        assertTrue(java.nio.file.Files.exists(path));
 
         OfxBank ofxBank = OfxV2Parser.parse(path);
 
@@ -80,5 +84,22 @@ public class OfxExportText extends AbstractEngineTest {
         assertEquals("10001-C01", importTransaction.getAccountTo());
 
         Files.delete(path);
+    }
+
+    @org.junit.jupiter.api.Test
+    void testExportLocalXmlFile()
+        throws java.lang.Exception {
+
+        jgnash.engine.DataStore dataStore = jgnash.engine.DataStoreType.XML.getDataStore();
+        final jgnash.engine.Engine engine = dataStore.getLocalEngine("c:\\Temp\\t1\\randrae_jgnash2.xml", "default", null);
+        assertNotNull(engine);
+
+        for (jgnash.engine.Account acc : engine.getAccountList()) {
+            java.nio.file.Path path = java.nio.file.Path.of("c:\\Temp\\t1", "expacc_" + acc.getName() + ".ofx");
+
+            jgnash.convert.exportantur.ofx.OfxExport ofxExport = new jgnash.convert.exportantur.ofx.OfxExport(acc,
+                java.time.LocalDate.of(2000, 1, 1), java.time.LocalDate.of(2020, 12, 31), path.toFile());
+            ofxExport.exportAccount();
+        }
     }
 }

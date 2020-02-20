@@ -17,11 +17,8 @@
  */
 package jgnash.engine;
 
-import io.github.glytching.junit.extension.folder.TemporaryFolder;
-import io.github.glytching.junit.extension.folder.TemporaryFolderExtension;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.extension.ExtendWith;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -30,8 +27,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.extension.ExtendWith;
+
+import io.github.glytching.junit.extension.folder.TemporaryFolder;
+import io.github.glytching.junit.extension.folder.TemporaryFolderExtension;
 
 /**
  * Abstract base for testing the core engine API's.
@@ -51,7 +52,7 @@ public abstract class AbstractEngineTest {
 
     Account expenseAccount;
 
-    protected Account usdBankAccount;
+    protected jgnash.engine.Account usdBankAccount;
 
     protected Account checkingAccount;
 
@@ -61,82 +62,85 @@ public abstract class AbstractEngineTest {
 
     SecurityNode securityNode1;
 
-    protected abstract Engine createEngine() throws IOException;
+    protected abstract Engine createEngine()
+        throws IOException;
 
     @BeforeEach
-    public void setUp(final TemporaryFolder testFolder) throws Exception {
+    public void setUp(final TemporaryFolder testFolder)
+        throws Exception {
         Locale.setDefault(Locale.US);
 
         this.testFolder = testFolder;
 
-        e = createEngine();
+        this.e = this.createEngine();
 
-        assertNotNull(e);
+        assertNotNull(this.e);
 
-        e.setCreateBackups(false);
+        this.e.setCreateBackups(false);
 
         // Creating currencies
         CurrencyNode defaultCurrency = DefaultCurrencies.buildCustomNode("USD");
 
-        e.addCurrency(defaultCurrency);
-        e.setDefaultCurrency(defaultCurrency);
+        this.e.addCurrency(defaultCurrency);
+        this.e.setDefaultCurrency(defaultCurrency);
 
         CurrencyNode cadCurrency = DefaultCurrencies.buildCustomNode("CAD");
-        e.addCurrency(cadCurrency);
+        this.e.addCurrency(cadCurrency);
 
         // Creating accounts
-        incomeAccount = new Account(AccountType.INCOME, defaultCurrency);
-        incomeAccount.setName("Income Account");
-        e.addAccount(e.getRootAccount(), incomeAccount);
+        this.incomeAccount = new Account(AccountType.INCOME, defaultCurrency);
+        this.incomeAccount.setName("Income Account");
+        this.e.addAccount(this.e.getRootAccount(), this.incomeAccount);
 
-        expenseAccount = new Account(AccountType.EXPENSE, defaultCurrency);
-        expenseAccount.setName("Expense Account");
-        e.addAccount(e.getRootAccount(), expenseAccount);
+        this.expenseAccount = new Account(AccountType.EXPENSE, defaultCurrency);
+        this.expenseAccount.setName("Expense Account");
+        this.e.addAccount(this.e.getRootAccount(), this.expenseAccount);
 
-        usdBankAccount = new Account(AccountType.BANK, defaultCurrency);
-        usdBankAccount.setName("USD Bank Account");
-        usdBankAccount.setBankId("xyzabc");
-        usdBankAccount.setAccountNumber("10001-A01");
-        e.addAccount(e.getRootAccount(), usdBankAccount);
+        this.usdBankAccount = new Account(AccountType.BANK, defaultCurrency);
+        this.usdBankAccount.setName("USD Bank Account");
+        this.usdBankAccount.setBankId("xyzabc");
+        this.usdBankAccount.setAccountNumber("10001-A01");
+        this.e.addAccount(this.e.getRootAccount(), this.usdBankAccount);
 
-        checkingAccount = new Account(AccountType.CHECKING, defaultCurrency);
-        checkingAccount.setName("Checking Account");
-        checkingAccount.setBankId("xyzabc");
-        checkingAccount.setAccountNumber("10001-C01");
-        e.addAccount(e.getRootAccount(), checkingAccount);
+        this.checkingAccount = new Account(AccountType.CHECKING, defaultCurrency);
+        this.checkingAccount.setName("Checking Account");
+        this.checkingAccount.setBankId("xyzabc");
+        this.checkingAccount.setAccountNumber("10001-C01");
+        this.e.addAccount(this.e.getRootAccount(), this.checkingAccount);
 
         Account cadBankAccount = new Account(AccountType.BANK, cadCurrency);
         cadBankAccount.setName("CAD Bank Account");
-        e.addAccount(e.getRootAccount(), cadBankAccount);
+        this.e.addAccount(this.e.getRootAccount(), cadBankAccount);
 
-        equityAccount = new Account(AccountType.EQUITY, defaultCurrency);
-        equityAccount.setName("Equity Account");
-        e.addAccount(e.getRootAccount(), equityAccount);
+        this.equityAccount = new Account(AccountType.EQUITY, defaultCurrency);
+        this.equityAccount.setName("Equity Account");
+        this.e.addAccount(this.e.getRootAccount(), this.equityAccount);
 
         Account liabilityAccount = new Account(AccountType.LIABILITY, defaultCurrency);
         liabilityAccount.setName("Liability Account");
-        e.addAccount(e.getRootAccount(), liabilityAccount);
+        this.e.addAccount(this.e.getRootAccount(), liabilityAccount);
 
-        investAccount = new Account(AccountType.INVEST, defaultCurrency);
-        investAccount.setName("Invest Account");
-        e.addAccount(e.getRootAccount(), investAccount);
+        this.investAccount = new Account(AccountType.INVEST, defaultCurrency);
+        this.investAccount.setName("Invest Account");
+        this.e.addAccount(this.e.getRootAccount(), this.investAccount);
 
         // Creating securities
-        securityNode1 = new SecurityNode(defaultCurrency);
-        securityNode1.setSymbol("GOOGLE");
-        assertTrue(e.addSecurity(securityNode1));
+        this.securityNode1 = new SecurityNode(defaultCurrency);
+        this.securityNode1.setSymbol("GOOGLE");
+        assertTrue(this.e.addSecurity(this.securityNode1));
 
         // Adding security to the invest account
         List<SecurityNode> securityNodeList = new ArrayList<>();
-        securityNodeList.add(securityNode1);
-        assertTrue(e.updateAccountSecurities(investAccount, securityNodeList));
+        securityNodeList.add(this.securityNode1);
+        assertTrue(this.e.updateAccountSecurities(this.investAccount, securityNodeList));
     }
 
     @AfterEach
-    public void tearDown() throws IOException {
+    public void tearDown()
+        throws IOException {
         EngineFactory.closeEngine(EngineFactory.DEFAULT);
-        EngineFactory.deleteDatabase(database);
+        EngineFactory.deleteDatabase(this.database);
 
-        Files.deleteIfExists(Paths.get(database));
+        Files.deleteIfExists(Paths.get(this.database));
     }
 }

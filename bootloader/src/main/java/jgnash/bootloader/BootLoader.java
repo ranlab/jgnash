@@ -196,23 +196,36 @@ public class BootLoader {
         return length;
     }
 
-    private static void showException(final Exception exception) {
-        final String message = exception.getMessage() + "\nStackTrace: " + Arrays.toString(exception.getStackTrace());
-        final String title = exception.getClass().getName();
+    private static void showException(final java.lang.Exception exception) {
+        final java.lang.String message = exception.getMessage() + "\nStackTrace: " + Arrays.toString(exception.getStackTrace());
+        final java.lang.String title = exception.getClass().getName();
 
         JOptionPane.showMessageDialog(null, message, title, JOptionPane.ERROR_MESSAGE);
     }
 
-    private static boolean downloadFile(final URL source, final Path dest, final LongConsumer countConsumer)
+    /**
+     * Download a file from URL and put it to local destination.
+     * @param source
+     * @param dest
+     * @param countConsumer
+     * @return
+     * @throws IOException
+     */
+    private static boolean downloadFile(final java.net.URL source, final Path dest, final LongConsumer countConsumer)
         throws IOException {
-        final Logger logger = Logger.getLogger(jgnash.bootloader.BootLoader.class.getName());
+        final java.util.logging.Logger logger = Logger.getLogger(jgnash.bootloader.BootLoader.class.getName());
         boolean result = true;
 
-        logger.info("Downloading " + source.toExternalForm() + " to " + dest.toString());
+        java.lang.String md5 = "";
 
-        String md5 = "";
+        //Proxy instance, proxy ip = 10.0.0.1 with port 8080
+        java.net.Proxy proxy = new java.net.Proxy(java.net.Proxy.Type.HTTP,
+            new java.net.InetSocketAddress("ffproxy.ad.first-financial.biz", 8005));
 
-        final java.net.HttpURLConnection httpConnection = (java.net.HttpURLConnection) (source.openConnection());
+        final java.net.HttpURLConnection httpConnection = (java.net.HttpURLConnection) (source.openConnection(proxy));
+        logger
+            .info(java.lang.String
+                .format("Downloading %s to %s (use Proxy %s)", source.toExternalForm(), dest.toString(), "" + httpConnection.usingProxy()));
 
         try (final BufferedInputStream in = new BufferedInputStream(httpConnection.getInputStream());
             final BufferedOutputStream bout = new BufferedOutputStream(new CountingFileOutputStream(dest.toString(), countConsumer),
@@ -231,13 +244,13 @@ public class BootLoader {
             md.update(Files.readAllBytes(dest));
 
             md5 = DatatypeConverter.printHexBinary(md.digest()).toLowerCase();
-        } catch (final Exception e) {
+        } catch (final java.lang.Exception e) {
             e.printStackTrace();
             showException(e);
             result = false;
         }
 
-        final URL md5Source = new URL(source.toExternalForm() + ".md5");
+        final java.net.URL md5Source = new java.net.URL(source.toExternalForm() + ".md5");
         final Path md5Dest = Files.createTempFile("", ".md5");
 
         try (final ReadableByteChannel readableByteChannel = Channels.newChannel(md5Source.openStream());
