@@ -34,7 +34,7 @@ import jgnash.engine.EngineFactory;
 import jgnash.engine.Transaction;
 import jgnash.engine.TransactionFactory;
 
-public class OfxExportText extends AbstractEngineTest {
+public class OfxExportTest extends AbstractEngineTest {
 
     @Override
     protected Engine createEngine()
@@ -84,22 +84,5 @@ public class OfxExportText extends AbstractEngineTest {
         assertEquals("10001-C01", importTransaction.getAccountTo());
 
         Files.delete(path);
-    }
-
-    @org.junit.jupiter.api.Test
-    void testExportLocalXmlFile()
-        throws java.lang.Exception {
-
-        jgnash.engine.DataStore dataStore = jgnash.engine.DataStoreType.XML.getDataStore();
-        final jgnash.engine.Engine engine = dataStore.getLocalEngine("c:\\Temp\\t1\\randrae_jgnash2.xml", "default", null);
-        assertNotNull(engine);
-
-        for (jgnash.engine.Account acc : engine.getAccountList()) {
-            java.nio.file.Path path = java.nio.file.Path.of("c:\\Temp\\t1", "expacc_" + acc.getName() + ".ofx");
-
-            jgnash.convert.exportantur.ofx.OfxExport ofxExport = new jgnash.convert.exportantur.ofx.OfxExport(acc,
-                java.time.LocalDate.of(2000, 1, 1), java.time.LocalDate.of(2020, 12, 31), path.toFile());
-            ofxExport.exportAccount();
-        }
     }
 }

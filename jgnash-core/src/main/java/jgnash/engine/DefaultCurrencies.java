@@ -87,7 +87,7 @@ public class DefaultCurrencies {
         Currency c;
 
         try {
-            c = Currency.getInstance(ISOCode);
+            c = java.util.Currency.getInstance(ISOCode);
             node.setSymbol(c.getCurrencyCode());
         } catch (Exception e) {
             node.setSymbol(ISOCode);

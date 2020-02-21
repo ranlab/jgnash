@@ -2563,7 +2563,7 @@ public class Engine {
                         .forEach(account -> logSevere("Failed to add the Transaction"));
                 result = this.getTransactionDAO().addTransaction(transaction);
 
-                logInfo(this.rb.getString("Message.TransactionAdd"));
+                logInfo(java.lang.String.format("%s (%s)", this.rb.getString("Message.TransactionAdd"), transaction.getNumber()));
 
                 /* If successful, extract and enter a default exchange rate for the transaction date if a rate has not been set */
                 if (result) {

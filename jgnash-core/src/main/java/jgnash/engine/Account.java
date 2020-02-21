@@ -112,7 +112,7 @@ public class Account extends StoredObject implements Comparable<Account> {
      */
     @JoinTable
     @OrderBy("date, number, timestamp")
-    @ManyToMany(cascade = {CascadeType.ALL}, fetch = FetchType.EAGER)
+    @ManyToMany(cascade = { CascadeType.ALL }, fetch = FetchType.EAGER)
     final Set<Transaction> transactions = new HashSet<>();
 
     /**
@@ -120,7 +120,7 @@ public class Account extends StoredObject implements Comparable<Account> {
      */
     @JoinColumn()
     @OrderBy("symbol")
-    @ManyToMany(cascade = {CascadeType.REFRESH, CascadeType.PERSIST, CascadeType.MERGE}, fetch = FetchType.EAGER)
+    @ManyToMany(cascade = { CascadeType.REFRESH, CascadeType.PERSIST, CascadeType.MERGE }, fetch = FetchType.EAGER)
     private final Set<SecurityNode> securities = new HashSet<>();
 
     @Enumerated(EnumType.STRING)
@@ -151,7 +151,7 @@ public class Account extends StoredObject implements Comparable<Account> {
      * Sorted list of child accounts.
      */
     @OrderBy("name")
-    @OneToMany(cascade = {CascadeType.ALL}, fetch = FetchType.EAGER)
+    @OneToMany(cascade = { CascadeType.ALL }, fetch = FetchType.EAGER)
     private final Set<Account> children = new HashSet<>();
 
     /**
@@ -159,7 +159,6 @@ public class Account extends StoredObject implements Comparable<Account> {
      */
     @Transient
     private transient List<Transaction> cachedSortedTransactionList;
-
 
     /**
      * Cached list of sorted accounts this is not persisted.  This prevents concurrency issues when using a JPA backend
@@ -199,7 +198,7 @@ public class Account extends StoredObject implements Comparable<Account> {
     @Column(nullable = false, columnDefinition = "int default 0")
     private int accountCode;
 
-    @OneToOne(orphanRemoval = true, cascade = {CascadeType.ALL})
+    @OneToOne(orphanRemoval = true, cascade = { CascadeType.ALL })
     private AmortizeObject amortizeObject;
 
     /**
@@ -225,13 +224,13 @@ public class Account extends StoredObject implements Comparable<Account> {
      * <b>Do not use to create account new instance</b>
      */
     public Account() {
-        transactionLock = new ReentrantReadWriteLock(true);
-        childLock = new ReentrantReadWriteLock(true);
-        securitiesLock = new ReentrantReadWriteLock(true);
-        attributesLock = new ReentrantReadWriteLock(true);
+        this.transactionLock = new ReentrantReadWriteLock(true);
+        this.childLock = new ReentrantReadWriteLock(true);
+        this.securitiesLock = new ReentrantReadWriteLock(true);
+        this.attributesLock = new ReentrantReadWriteLock(true);
 
         // CopyOnWrite is used as an alternative to defensive copies
-        cachedSortedChildren = new ArrayList<>();
+        this.cachedSortedChildren = new ArrayList<>();
     }
 
     public Account(@NotNull final AccountType type, @NotNull final CurrencyNode node) {
@@ -240,8 +239,8 @@ public class Account extends StoredObject implements Comparable<Account> {
         Objects.requireNonNull(type);
         Objects.requireNonNull(node);
 
-        setAccountType(type);
-        setCurrencyNode(node);
+        this.setAccountType(type);
+        this.setCurrencyNode(node);
     }
 
     private static String getAccountSeparator() {
@@ -253,22 +252,22 @@ public class Account extends StoredObject implements Comparable<Account> {
     }
 
     ReadWriteLock getTransactionLock() {
-        return transactionLock;
+        return this.transactionLock;
     }
 
     private AccountProxy getProxy() {
-        if (proxy == null) {
-            proxy = getAccountType().getProxy(this);
+        if (this.proxy == null) {
+            this.proxy = this.getAccountType().getProxy(this);
         }
-        return proxy;
+        return this.proxy;
     }
 
     /**
      * Clear cached account balances so they will be recalculated.
      */
     void clearCachedBalances() {
-        accountBalance = null;
-        reconciledBalance = null;
+        this.accountBalance = null;
+        this.reconciledBalance = null;
     }
 
     /**
@@ -279,37 +278,41 @@ public class Account extends StoredObject implements Comparable<Account> {
      * to this account
      */
     boolean addTransaction(final Transaction tran) {
-        if (placeHolder) {
-            logger.severe("Tried to add transaction to a place holder account");
+        if (this.placeHolder) {
+            java.lang.StringBuffer sb = new java.lang.StringBuffer();
+            tran.getAccounts().stream().forEach(acc -> sb.append(acc.getName() + " "));
+            logger.severe(java.lang.String.format("%s (%s)", "Tried to add transaction to a place holder account", sb.toString()));
             return false;
         }
 
-        transactionLock.writeLock().lock();
+        this.transactionLock.writeLock().lock();
 
         try {
             boolean result = false;
 
-            if (!contains(tran)) {
+            if (!this.contains(tran)) {
 
-                transactions.add(tran);
+                this.transactions.add(tran);
 
                 /* The cached list may already contain the transaction if it has not been initialized yet */
-                if (!getCachedSortedTransactionList().contains(tran)) {
-                    getCachedSortedTransactionList().add(tran);
-                    Collections.sort(getCachedSortedTransactionList());
+                if (!this.getCachedSortedTransactionList().contains(tran)) {
+                    this.getCachedSortedTransactionList().add(tran);
+                    Collections.sort(this.getCachedSortedTransactionList());
                 }
 
-                clearCachedBalances();
+                this.clearCachedBalances();
 
                 result = true;
             } else {
-                logger.log(Level.SEVERE, "Account: {0}({1}){2}Already have transaction ID: {3}", new Object[]{getName(),
-                        hashCode(), System.lineSeparator(), tran.hashCode()});
+                logger
+                    .log(Level.SEVERE,
+                        "Account: {0}({1}){2}Already have transaction ID: {3}",
+                        new Object[] { this.getName(), this.hashCode(), System.lineSeparator(), tran.hashCode() });
             }
 
             return result;
         } finally {
-            transactionLock.writeLock().unlock();
+            this.transactionLock.writeLock().unlock();
         }
     }
 
@@ -321,24 +324,28 @@ public class Account extends StoredObject implements Comparable<Account> {
      * within this account
      */
     boolean removeTransaction(final Transaction tran) {
-        transactionLock.writeLock().lock();
+        this.transactionLock.writeLock().lock();
 
         try {
             boolean result = false;
 
-            if (contains(tran)) {
-                transactions.remove(tran);
-                getCachedSortedTransactionList().remove(tran);
-                clearCachedBalances();
+            if (this.contains(tran)) {
+                this.transactions.remove(tran);
+                this.getCachedSortedTransactionList().remove(tran);
+                this.clearCachedBalances();
 
                 result = true;
             } else {
-                Logger.getLogger(Account.class.toString()).log(Level.SEVERE, "Account: {0}({1}){2}Did not contain transaction ID: {3}", new Object[]{getName(), getUuid(), System.lineSeparator(), tran.getUuid()});
+                Logger
+                    .getLogger(Account.class.toString())
+                        .log(Level.SEVERE,
+                            "Account: {0}({1}){2}Did not contain transaction ID: {3}",
+                            new Object[] { this.getName(), this.getUuid(), System.lineSeparator(), tran.getUuid() });
             }
 
             return result;
         } finally {
-            transactionLock.writeLock().unlock();
+            this.transactionLock.writeLock().unlock();
         }
     }
 
@@ -350,12 +357,12 @@ public class Account extends StoredObject implements Comparable<Account> {
      * to this account
      */
     public boolean contains(final Transaction tran) {
-        transactionLock.readLock().lock();
+        this.transactionLock.readLock().lock();
 
         try {
-            return transactions.contains(tran);
+            return this.transactions.contains(tran);
         } finally {
-            transactionLock.readLock().unlock();
+            this.transactionLock.readLock().unlock();
         }
     }
 
@@ -366,12 +373,12 @@ public class Account extends StoredObject implements Comparable<Account> {
      * @return true if the supplied account is a child of this account
      */
     public boolean contains(final Account account) {
-        childLock.readLock().lock();
+        this.childLock.readLock().lock();
 
         try {
-            return cachedSortedChildren.contains(account);
+            return this.cachedSortedChildren.contains(account);
         } finally {
-            childLock.readLock().unlock();
+            this.childLock.readLock().unlock();
         }
     }
 
@@ -382,12 +389,12 @@ public class Account extends StoredObject implements Comparable<Account> {
      */
     @NotNull
     public List<Transaction> getSortedTransactionList() {
-        transactionLock.readLock().lock();
+        this.transactionLock.readLock().lock();
 
         try {
-            return Collections.unmodifiableList(getCachedSortedTransactionList());
+            return Collections.unmodifiableList(this.getCachedSortedTransactionList());
         } finally {
-            transactionLock.readLock().unlock();
+            this.transactionLock.readLock().unlock();
         }
     }
 
@@ -400,12 +407,12 @@ public class Account extends StoredObject implements Comparable<Account> {
      */
     @NotNull
     public Transaction getTransactionAt(final int index) {
-        transactionLock.readLock().lock();
+        this.transactionLock.readLock().lock();
 
         try {
-            return getCachedSortedTransactionList().get(index);
+            return this.getCachedSortedTransactionList().get(index);
         } finally {
-            transactionLock.readLock().unlock();
+            this.transactionLock.readLock().unlock();
         }
     }
 
@@ -415,12 +422,12 @@ public class Account extends StoredObject implements Comparable<Account> {
      * @return the number of transactions attached to this account.
      */
     public int getTransactionCount() {
-        transactionLock.readLock().lock();
+        this.transactionLock.readLock().lock();
 
         try {
-            return transactions.size();
+            return this.transactions.size();
         } finally {
-            transactionLock.readLock().unlock();
+            this.transactionLock.readLock().unlock();
         }
     }
 
@@ -432,12 +439,12 @@ public class Account extends StoredObject implements Comparable<Account> {
      */
     @NotNull
     public String getNextTransactionNumber() {
-        transactionLock.readLock().lock();
+        this.transactionLock.readLock().lock();
 
         try {
             int number = 0;
 
-            for (final Transaction tran : transactions) {
+            for (final Transaction tran : this.transactions) {
                 if (numberPattern.matcher(tran.getNumber()).matches()) {
                     try {
                         number = Math.max(number, Integer.parseInt(tran.getNumber()));
@@ -453,7 +460,7 @@ public class Account extends StoredObject implements Comparable<Account> {
 
             return Integer.toString(number + 1);
         } finally {
-            transactionLock.readLock().unlock();
+            this.transactionLock.readLock().unlock();
         }
     }
 
@@ -464,24 +471,24 @@ public class Account extends StoredObject implements Comparable<Account> {
      * @return {@code true} if the account was added successfully, {@code false} otherwise.
      */
     boolean addChild(final Account child) {
-        childLock.writeLock().lock();
+        this.childLock.writeLock().lock();
 
         try {
             boolean result = false;
 
-            if (!children.contains(child) && child != this) {
+            if (!this.children.contains(child) && (child != this)) {
                 if (child.setParent(this)) {
-                    children.add(child);
+                    this.children.add(child);
                     result = true;
 
-                    cachedSortedChildren.add(child);
-                    Collections.sort(cachedSortedChildren);
+                    this.cachedSortedChildren.add(child);
+                    Collections.sort(this.cachedSortedChildren);
                 }
             }
 
             return result;
         } finally {
-            childLock.writeLock().unlock();
+            this.childLock.writeLock().unlock();
         }
     }
 
@@ -492,19 +499,19 @@ public class Account extends StoredObject implements Comparable<Account> {
      * @return {@code true} if the specific account was account child of this account, {@code false} otherwise.
      */
     boolean removeChild(final Account child) {
-        childLock.writeLock().lock();
+        this.childLock.writeLock().lock();
 
         try {
             boolean result = false;
 
-            if (children.remove(child)) {
+            if (this.children.remove(child)) {
                 result = true;
 
-                cachedSortedChildren.remove(child);
+                this.cachedSortedChildren.remove(child);
             }
             return result;
         } finally {
-            childLock.writeLock().unlock();
+            this.childLock.writeLock().unlock();
         }
     }
 
@@ -514,12 +521,12 @@ public class Account extends StoredObject implements Comparable<Account> {
      * @return List of children
      */
     public List<Account> getChildren() {
-        childLock.readLock().lock();
+        this.childLock.readLock().lock();
 
         try {
-            return new ArrayList<>(cachedSortedChildren);
+            return new ArrayList<>(this.cachedSortedChildren);
         } finally {
-            childLock.readLock().unlock();
+            this.childLock.readLock().unlock();
         }
     }
 
@@ -530,7 +537,7 @@ public class Account extends StoredObject implements Comparable<Account> {
      * @return List of children
      */
     public List<Account> getChildren(final Comparator<? super Account> comparator) {
-        List<Account> accountChildren = getChildren();
+        List<Account> accountChildren = this.getChildren();
         accountChildren.sort(comparator);
 
         return accountChildren;
@@ -544,12 +551,12 @@ public class Account extends StoredObject implements Comparable<Account> {
      * {@code Account} does not contain the {@code Transaction}.
      */
     public int indexOf(final Transaction tran) {
-        transactionLock.readLock().lock();
+        this.transactionLock.readLock().lock();
 
         try {
-            return getCachedSortedTransactionList().indexOf(tran);
+            return this.getCachedSortedTransactionList().indexOf(tran);
         } finally {
-            transactionLock.readLock().unlock();
+            this.transactionLock.readLock().unlock();
         }
     }
 
@@ -559,12 +566,12 @@ public class Account extends StoredObject implements Comparable<Account> {
      * @return the number of children this account has.
      */
     public int getChildCount() {
-        childLock.readLock().lock();
+        this.childLock.readLock().lock();
 
         try {
-            return cachedSortedChildren.size();
+            return this.cachedSortedChildren.size();
         } finally {
-            childLock.readLock().unlock();
+            this.childLock.readLock().unlock();
         }
     }
 
@@ -574,12 +581,12 @@ public class Account extends StoredObject implements Comparable<Account> {
      * @return the parent of this account, null is this account is not account child
      */
     public Account getParent() {
-        childLock.readLock().lock();
+        this.childLock.readLock().lock();
 
         try {
-            return parentAccount;
+            return this.parentAccount;
         } finally {
-            childLock.readLock().unlock();
+            this.childLock.readLock().unlock();
         }
     }
 
@@ -590,19 +597,19 @@ public class Account extends StoredObject implements Comparable<Account> {
      * @return {@code true} is successful
      */
     public boolean setParent(final Account account) {
-        childLock.writeLock().lock();
+        this.childLock.writeLock().lock();
 
         try {
             boolean result = false;
 
             if (account != this) {
-                parentAccount = account;
+                this.parentAccount = account;
                 result = true;
             }
 
             return result;
         } finally {
-            childLock.writeLock().unlock();
+            this.childLock.writeLock().unlock();
         }
     }
 
@@ -612,12 +619,12 @@ public class Account extends StoredObject implements Comparable<Account> {
      * @return {@code true} is this {@code Account} has children, {@code false} otherwise.
      */
     public boolean isParent() {
-        childLock.readLock().lock();
+        this.childLock.readLock().lock();
 
         try {
-            return !cachedSortedChildren.isEmpty();
+            return !this.cachedSortedChildren.isEmpty();
         } finally {
-            childLock.readLock().unlock();
+            this.childLock.readLock().unlock();
         }
     }
 
@@ -629,15 +636,15 @@ public class Account extends StoredObject implements Comparable<Account> {
      * @return the balance of this account
      */
     public BigDecimal getBalance() {
-        transactionLock.readLock().lock();
+        this.transactionLock.readLock().lock();
 
         try {
-            if (accountBalance != null) {
-                return accountBalance;
+            if (this.accountBalance != null) {
+                return this.accountBalance;
             }
-            return accountBalance = getProxy().getBalance();
+            return this.accountBalance = this.getProxy().getBalance();
         } finally {
-            transactionLock.readLock().unlock();
+            this.transactionLock.readLock().unlock();
         }
     }
 
@@ -650,12 +657,12 @@ public class Account extends StoredObject implements Comparable<Account> {
      * @return the balance of this account
      */
     private BigDecimal getBalance(final CurrencyNode node) {
-        transactionLock.readLock().lock();
+        this.transactionLock.readLock().lock();
 
         try {
-            return adjustForExchangeRate(getBalance(), node);
+            return this.adjustForExchangeRate(this.getBalance(), node);
         } finally {
-            transactionLock.readLock().unlock();
+            this.transactionLock.readLock().unlock();
         }
     }
 
@@ -667,12 +674,12 @@ public class Account extends StoredObject implements Comparable<Account> {
      * @return the balance of this account at the specified index.
      */
     private BigDecimal getBalanceAt(final int index) {
-        transactionLock.readLock().lock();
+        this.transactionLock.readLock().lock();
 
         try {
-            return getProxy().getBalanceAt(index);
+            return this.getProxy().getBalanceAt(index);
         } finally {
-            transactionLock.readLock().unlock();
+            this.transactionLock.readLock().unlock();
         }
     }
 
@@ -684,18 +691,18 @@ public class Account extends StoredObject implements Comparable<Account> {
      * @return the balance of this account at the specified transaction
      */
     public BigDecimal getBalanceAt(final Transaction transaction) {
-        transactionLock.readLock().lock();
+        this.transactionLock.readLock().lock();
 
         try {
-            final int index = indexOf(transaction);
+            final int index = this.indexOf(transaction);
 
             if (index >= 0) {
-                return getBalanceAt(index);
+                return this.getBalanceAt(index);
             }
 
             return BigDecimal.ZERO;
         } finally {
-            transactionLock.readLock().unlock();
+            this.transactionLock.readLock().unlock();
         }
     }
 
@@ -707,30 +714,30 @@ public class Account extends StoredObject implements Comparable<Account> {
      * @return the reconciled balance of this account
      */
     public BigDecimal getReconciledBalance() {
-        transactionLock.readLock().lock();
+        this.transactionLock.readLock().lock();
 
         try {
-            if (reconciledBalance != null) {
-                return reconciledBalance;
+            if (this.reconciledBalance != null) {
+                return this.reconciledBalance;
             }
 
-            return reconciledBalance = getProxy().getReconciledBalance();
+            return this.reconciledBalance = this.getProxy().getReconciledBalance();
         } finally {
-            transactionLock.readLock().unlock();
+            this.transactionLock.readLock().unlock();
         }
     }
 
     private BigDecimal getReconciledBalance(final CurrencyNode node) {
-        return adjustForExchangeRate(getReconciledBalance(), node);
+        return this.adjustForExchangeRate(this.getReconciledBalance(), node);
     }
 
     private BigDecimal adjustForExchangeRate(final BigDecimal amount, final CurrencyNode node) {
-        if (node.equals(getCurrencyNode())) { // child has the same commodity type
+        if (node.equals(this.getCurrencyNode())) { // child has the same commodity type
             return amount;
         }
 
         // the account has a different currency, use the last known exchange rate
-        return amount.multiply(getCurrencyNode().getExchangeRate(node));
+        return amount.multiply(this.getCurrencyNode().getExchangeRate(node));
     }
 
     /**
@@ -739,12 +746,12 @@ public class Account extends StoredObject implements Comparable<Account> {
      * @return Date of first unreconciled transaction
      */
     public LocalDate getFirstUnreconciledTransactionDate() {
-        transactionLock.readLock().lock();
+        this.transactionLock.readLock().lock();
 
         try {
             LocalDate date = null;
 
-            for (final Transaction transaction : getSortedTransactionList()) {
+            for (final Transaction transaction : this.getSortedTransactionList()) {
                 if (transaction.getReconciled(this) != ReconciledState.RECONCILED) {
                     date = transaction.getLocalDate();
                     break;
@@ -752,12 +759,12 @@ public class Account extends StoredObject implements Comparable<Account> {
             }
 
             if (date == null) {
-                date = getCachedSortedTransactionList().get(getTransactionCount() - 1).getLocalDate();
+                date = this.getCachedSortedTransactionList().get(this.getTransactionCount() - 1).getLocalDate();
             }
 
             return date;
         } finally {
-            transactionLock.readLock().unlock();
+            this.transactionLock.readLock().unlock();
         }
     }
 
@@ -768,7 +775,7 @@ public class Account extends StoredObject implements Comparable<Account> {
      * @see AccountProxy#getOpeningBalanceForReconcile()
      */
     public BigDecimal getOpeningBalanceForReconcile() {
-        return getProxy().getOpeningBalanceForReconcile();
+        return this.getProxy().getOpeningBalanceForReconcile();
     }
 
     /**
@@ -778,20 +785,20 @@ public class Account extends StoredObject implements Comparable<Account> {
      * accounts.
      */
     public BigDecimal getTreeBalance() {
-        transactionLock.readLock().lock();
-        childLock.readLock().lock();
+        this.transactionLock.readLock().lock();
+        this.childLock.readLock().lock();
 
         try {
-            BigDecimal balance = getBalance();
+            BigDecimal balance = this.getBalance();
 
-            for (final Account child : cachedSortedChildren) {
-                balance = balance.add(child.getTreeBalance(getCurrencyNode()));
+            for (final Account child : this.cachedSortedChildren) {
+                balance = balance.add(child.getTreeBalance(this.getCurrencyNode()));
             }
 
             return balance;
         } finally {
-            transactionLock.readLock().unlock();
-            childLock.readLock().unlock();
+            this.transactionLock.readLock().unlock();
+            this.childLock.readLock().unlock();
         }
     }
 
@@ -805,20 +812,20 @@ public class Account extends StoredObject implements Comparable<Account> {
      * accounts.
      */
     public BigDecimal getTreeBalance(final LocalDate endDate, final CurrencyNode node) {
-        transactionLock.readLock().lock();
-        childLock.readLock().lock();
+        this.transactionLock.readLock().lock();
+        this.childLock.readLock().lock();
 
         try {
-            BigDecimal balance = getBalance(endDate, node);
+            BigDecimal balance = this.getBalance(endDate, node);
 
-            for (final Account child : cachedSortedChildren) {
+            for (final Account child : this.cachedSortedChildren) {
                 balance = balance.add(child.getTreeBalance(endDate, node));
             }
 
             return balance;
         } finally {
-            transactionLock.readLock().unlock();
-            childLock.readLock().unlock();
+            this.transactionLock.readLock().unlock();
+            this.childLock.readLock().unlock();
         }
     }
 
@@ -832,19 +839,19 @@ public class Account extends StoredObject implements Comparable<Account> {
      * accounts.
      */
     private BigDecimal getTreeBalance(final CurrencyNode node) {
-        transactionLock.readLock().lock();
-        childLock.readLock().lock();
+        this.transactionLock.readLock().lock();
+        this.childLock.readLock().lock();
 
         try {
-            BigDecimal balance = getBalance(node);
+            BigDecimal balance = this.getBalance(node);
 
-            for (final Account child : cachedSortedChildren) {
+            for (final Account child : this.cachedSortedChildren) {
                 balance = balance.add(child.getTreeBalance(node));
             }
             return balance;
         } finally {
-            transactionLock.readLock().unlock();
-            childLock.readLock().unlock();
+            this.transactionLock.readLock().unlock();
+            this.childLock.readLock().unlock();
         }
     }
 
@@ -858,19 +865,19 @@ public class Account extends StoredObject implements Comparable<Account> {
      * accounts.
      */
     private BigDecimal getReconciledTreeBalance(final CurrencyNode node) {
-        transactionLock.readLock().lock();
-        childLock.readLock().lock();
+        this.transactionLock.readLock().lock();
+        this.childLock.readLock().lock();
 
         try {
-            BigDecimal balance = getReconciledBalance(node);
+            BigDecimal balance = this.getReconciledBalance(node);
 
-            for (final Account child : cachedSortedChildren) {
+            for (final Account child : this.cachedSortedChildren) {
                 balance = balance.add(child.getReconciledTreeBalance(node));
             }
             return balance;
         } finally {
-            transactionLock.readLock().unlock();
-            childLock.readLock().unlock();
+            this.transactionLock.readLock().unlock();
+            this.childLock.readLock().unlock();
         }
     }
 
@@ -881,19 +888,19 @@ public class Account extends StoredObject implements Comparable<Account> {
      * accounts.
      */
     public BigDecimal getReconciledTreeBalance() {
-        transactionLock.readLock().lock();
-        childLock.readLock().lock();
+        this.transactionLock.readLock().lock();
+        this.childLock.readLock().lock();
 
         try {
-            BigDecimal balance = getReconciledBalance();
+            BigDecimal balance = this.getReconciledBalance();
 
-            for (final Account child : cachedSortedChildren) {
-                balance = balance.add(child.getReconciledTreeBalance(getCurrencyNode()));
+            for (final Account child : this.cachedSortedChildren) {
+                balance = balance.add(child.getReconciledTreeBalance(this.getCurrencyNode()));
             }
             return balance;
         } finally {
-            transactionLock.readLock().unlock();
-            childLock.readLock().unlock();
+            this.transactionLock.readLock().unlock();
+            this.childLock.readLock().unlock();
         }
     }
 
@@ -909,12 +916,12 @@ public class Account extends StoredObject implements Comparable<Account> {
         Objects.requireNonNull(start);
         Objects.requireNonNull(end);
 
-        transactionLock.readLock().lock();
+        this.transactionLock.readLock().lock();
 
         try {
-            return getProxy().getBalance(start, end);
+            return this.getProxy().getBalance(start, end);
         } finally {
-            transactionLock.readLock().unlock();
+            this.transactionLock.readLock().unlock();
         }
     }
 
@@ -928,12 +935,12 @@ public class Account extends StoredObject implements Comparable<Account> {
      * @return the account balance
      */
     public BigDecimal getBalance(final LocalDate startDate, final LocalDate endDate, final CurrencyNode node) {
-        transactionLock.readLock().lock();
+        this.transactionLock.readLock().lock();
 
         try {
-            return adjustForExchangeRate(getBalance(startDate, endDate), node);
+            return this.adjustForExchangeRate(this.getBalance(startDate, endDate), node);
         } finally {
-            transactionLock.readLock().unlock();
+            this.transactionLock.readLock().unlock();
         }
     }
 
@@ -947,7 +954,7 @@ public class Account extends StoredObject implements Comparable<Account> {
         List<Account> list = new ArrayList<>();
         list.add(this);
 
-        Account parent = getParent();
+        Account parent = this.getParent();
 
         while (parent != null) {
             list.add(parent);
@@ -970,19 +977,19 @@ public class Account extends StoredObject implements Comparable<Account> {
         Objects.requireNonNull(start);
         Objects.requireNonNull(end);
 
-        transactionLock.readLock().lock();
-        childLock.readLock().lock();
+        this.transactionLock.readLock().lock();
+        this.childLock.readLock().lock();
 
         try {
-            BigDecimal returnValue = getBalance(start, end, node);
+            BigDecimal returnValue = this.getBalance(start, end, node);
 
-            for (final Account child : cachedSortedChildren) {
+            for (final Account child : this.cachedSortedChildren) {
                 returnValue = returnValue.add(child.getTreeBalance(start, end, node));
             }
             return returnValue;
         } finally {
-            transactionLock.readLock().unlock();
-            childLock.readLock().unlock();
+            this.transactionLock.readLock().unlock();
+            this.childLock.readLock().unlock();
         }
     }
 
@@ -993,12 +1000,12 @@ public class Account extends StoredObject implements Comparable<Account> {
      * @return The ending balance
      */
     public BigDecimal getBalance(final LocalDate localDate) {
-        transactionLock.readLock().lock();
+        this.transactionLock.readLock().lock();
 
         try {
-            return getProxy().getBalance(localDate);
+            return this.getProxy().getBalance(localDate);
         } finally {
-            transactionLock.readLock().unlock();
+            this.transactionLock.readLock().unlock();
         }
     }
 
@@ -1011,12 +1018,12 @@ public class Account extends StoredObject implements Comparable<Account> {
      * @return The ending balance
      */
     public BigDecimal getBalance(final LocalDate date, final CurrencyNode node) {
-        transactionLock.readLock().lock();
+        this.transactionLock.readLock().lock();
 
         try {
-            return adjustForExchangeRate(getBalance(date), node);
+            return this.adjustForExchangeRate(this.getBalance(date), node);
         } finally {
-            transactionLock.readLock().unlock();
+            this.transactionLock.readLock().unlock();
         }
     }
 
@@ -1029,14 +1036,17 @@ public class Account extends StoredObject implements Comparable<Account> {
      * @return a {@code List} of transactions that occurred within the specified dates
      */
     public List<Transaction> getTransactions(final LocalDate startDate, final LocalDate endDate) {
-        transactionLock.readLock().lock();
+        this.transactionLock.readLock().lock();
 
         try {
-            return transactions.parallelStream().filter(transaction
-                    -> DateUtils.after(transaction.getLocalDate(), startDate)
-                    && DateUtils.before(transaction.getLocalDate(), endDate)).sorted().collect(Collectors.toList());
+            return this.transactions
+                .parallelStream()
+                    .filter(transaction -> DateUtils.after(transaction.getLocalDate(), startDate)
+                        && DateUtils.before(transaction.getLocalDate(), endDate))
+                    .sorted()
+                    .collect(Collectors.toList());
         } finally {
-            transactionLock.readLock().unlock();
+            this.transactionLock.readLock().unlock();
         }
     }
 
@@ -1048,7 +1058,7 @@ public class Account extends StoredObject implements Comparable<Account> {
      * @return the commodity node for this account.
      */
     public CurrencyNode getCurrencyNode() {
-        return currencyNode;
+        return this.currencyNode;
     }
 
     /**
@@ -1061,15 +1071,15 @@ public class Account extends StoredObject implements Comparable<Account> {
     void setCurrencyNode(@NotNull final CurrencyNode node) {
         Objects.requireNonNull(node);
 
-        if (!node.equals(currencyNode)) {
-            currencyNode = node;
+        if (!node.equals(this.currencyNode)) {
+            this.currencyNode = node;
 
-            clearCachedBalances();  // cached balances will need to be recalculated
+            this.clearCachedBalances(); // cached balances will need to be recalculated
         }
     }
 
     public boolean isLocked() {
-        return locked;
+        return this.locked;
     }
 
     public void setLocked(final boolean locked) {
@@ -1077,7 +1087,7 @@ public class Account extends StoredObject implements Comparable<Account> {
     }
 
     public boolean isPlaceHolder() {
-        return placeHolder;
+        return this.placeHolder;
     }
 
     public void setPlaceHolder(final boolean placeHolder) {
@@ -1085,35 +1095,35 @@ public class Account extends StoredObject implements Comparable<Account> {
     }
 
     public String getDescription() {
-        return description;
+        return this.description;
     }
 
     public void setDescription(final String desc) {
-        description = desc;
+        this.description = desc;
     }
 
     public synchronized String getName() {
-        return name;
+        return this.name;
     }
 
     public synchronized void setName(final String newName) {
-        if (!newName.equals(name)) {
-            name = newName;
+        if (!newName.equals(this.name)) {
+            this.name = newName;
         }
     }
 
     public synchronized String getPathName() {
-        final Account parent = getParent();
+        final Account parent = this.getParent();
 
-        if (parent != null && parent.getAccountType() != AccountType.ROOT) {
-            return parent.getPathName() + getAccountSeparator() + getName();
+        if ((parent != null) && (parent.getAccountType() != AccountType.ROOT)) {
+            return parent.getPathName() + getAccountSeparator() + this.getName();
         }
 
-        return getName(); // this account is at the root level
+        return this.getName(); // this account is at the root level
     }
 
     public AccountType getAccountType() {
-        return accountType;
+        return this.accountType;
     }
 
     /**
@@ -1126,13 +1136,13 @@ public class Account extends StoredObject implements Comparable<Account> {
     void setAccountType(final AccountType type) {
         Objects.requireNonNull(type);
 
-        if (accountType != null && !accountType.isMutable()) {
+        if ((this.accountType != null) && !this.accountType.isMutable()) {
             throw new EngineException("Immutable account type");
         }
 
-        accountType = type;
+        this.accountType = type;
 
-        proxy = null; // proxy will need to change
+        this.proxy = null; // proxy will need to change
     }
 
     /**
@@ -1141,7 +1151,7 @@ public class Account extends StoredObject implements Comparable<Account> {
      * @return boolean is this account is visible, false otherwise
      */
     public boolean isVisible() {
-        return visible;
+        return this.visible;
     }
 
     /**
@@ -1159,7 +1169,7 @@ public class Account extends StoredObject implements Comparable<Account> {
      * @return the notes for this account
      */
     public String getNotes() {
-        return notes;
+        return this.notes;
     }
 
     /**
@@ -1184,32 +1194,32 @@ public class Account extends StoredObject implements Comparable<Account> {
     public int compareTo(@NotNull final Account acc) {
 
         // Sort by name
-        int result = getName().compareToIgnoreCase(acc.getName());
+        int result = this.getName().compareToIgnoreCase(acc.getName());
         if (result != 0) {
             return result;
         }
 
         // Sort of uuid after everything else fails.
-        return getUuid().compareTo(acc.getUuid());
+        return this.getUuid().compareTo(acc.getUuid());
     }
 
     @Override
     public String toString() {
-        return name;
+        return this.name;
     }
 
     @Override
     public boolean equals(final Object other) {
-        return this == other || other instanceof Account && getUuid().equals(((Account) other).getUuid());
+        return (this == other) || ((other instanceof Account) && this.getUuid().equals(((Account) other).getUuid()));
     }
 
     /**
      * User definable account code.  This can be used to manage sort order
-     * 
+     *
      * @return the user defined account code
      */
     public int getAccountCode() {
-        return accountCode;
+        return this.accountCode;
     }
 
     public void setAccountCode(final int accountCode) {
@@ -1222,11 +1232,11 @@ public class Account extends StoredObject implements Comparable<Account> {
      * @return the account number
      */
     public String getAccountNumber() {
-        return accountNumber;
+        return this.accountNumber;
     }
 
     public void setAccountNumber(final String account) {
-        accountNumber = account;
+        this.accountNumber = account;
     }
 
     /**
@@ -1239,8 +1249,8 @@ public class Account extends StoredObject implements Comparable<Account> {
     boolean addSecurity(final SecurityNode node) {
         boolean result = false;
 
-        if (node != null && memberOf(AccountGroup.INVEST) && !containsSecurity(node)) {
-            securities.add(node);
+        if ((node != null) && this.memberOf(AccountGroup.INVEST) && !this.containsSecurity(node)) {
+            this.securities.add(node);
 
             result = true;
         }
@@ -1256,29 +1266,29 @@ public class Account extends StoredObject implements Comparable<Account> {
      * @return {@code true} if successful, {@code false} if used by a transaction or not an active {@code SecurityNode}
      */
     boolean removeSecurity(final SecurityNode node) {
-        securitiesLock.writeLock().lock();
+        this.securitiesLock.writeLock().lock();
 
         try {
             boolean result = false;
 
-            if (!getUsedSecurities().contains(node) && containsSecurity(node)) {
-                securities.remove(node);
+            if (!this.getUsedSecurities().contains(node) && this.containsSecurity(node)) {
+                this.securities.remove(node);
                 result = true;
             }
 
             return result;
         } finally {
-            securitiesLock.writeLock().unlock();
+            this.securitiesLock.writeLock().unlock();
         }
     }
 
     public boolean containsSecurity(final SecurityNode node) {
-        securitiesLock.readLock().lock();
+        this.securitiesLock.readLock().lock();
 
         try {
-            return securities.contains(node);
+            return this.securities.contains(node);
         } finally {
-            securitiesLock.readLock().unlock();
+            this.securitiesLock.readLock().unlock();
         }
     }
 
@@ -1288,7 +1298,7 @@ public class Account extends StoredObject implements Comparable<Account> {
      * @return market value of the account
      */
     public BigDecimal getMarketValue() {
-        return getProxy().getMarketValue();
+        return this.getProxy().getMarketValue();
     }
 
     /**
@@ -1297,12 +1307,12 @@ public class Account extends StoredObject implements Comparable<Account> {
      * @return a sorted set
      */
     public Set<SecurityNode> getSecurities() {
-        securitiesLock.readLock().lock();
+        this.securitiesLock.readLock().lock();
 
         try {
-            return new TreeSet<>(securities);
+            return new TreeSet<>(this.securities);
         } finally {
-            securitiesLock.readLock().unlock();
+            this.securitiesLock.readLock().unlock();
         }
     }
 
@@ -1312,15 +1322,18 @@ public class Account extends StoredObject implements Comparable<Account> {
      * @return a set of used SecurityNodes
      */
     public Set<SecurityNode> getUsedSecurities() {
-        transactionLock.readLock().lock();
-        securitiesLock.readLock().lock();
+        this.transactionLock.readLock().lock();
+        this.securitiesLock.readLock().lock();
 
         try {
-            return transactions.parallelStream().filter(t -> t instanceof InvestmentTransaction).map(t ->
-                    ((InvestmentTransaction) t).getSecurityNode()).collect(Collectors.toCollection(TreeSet::new));
+            return this.transactions
+                .parallelStream()
+                    .filter(t -> t instanceof InvestmentTransaction)
+                    .map(t -> ((InvestmentTransaction) t).getSecurityNode())
+                    .collect(Collectors.toCollection(TreeSet::new));
         } finally {
-            securitiesLock.readLock().unlock();
-            transactionLock.readLock().unlock();
+            this.securitiesLock.readLock().unlock();
+            this.transactionLock.readLock().unlock();
         }
     }
 
@@ -1330,11 +1343,11 @@ public class Account extends StoredObject implements Comparable<Account> {
      * @return Cash balance of the account
      */
     public BigDecimal getCashBalance() {
-        Lock l = transactionLock.readLock();
+        Lock l = this.transactionLock.readLock();
         l.lock();
 
         try {
-            return getProxy().getCashBalance();
+            return this.getProxy().getCashBalance();
         } finally {
             l.unlock();
         }
@@ -1348,7 +1361,7 @@ public class Account extends StoredObject implements Comparable<Account> {
     public int getDepth() {
         int depth = 0;
 
-        Account parent = getParent();
+        Account parent = this.getParent();
 
         while (parent != null) {
             depth++;
@@ -1365,7 +1378,7 @@ public class Account extends StoredObject implements Comparable<Account> {
      * @return true if supplied AccountType match
      */
     public final boolean instanceOf(final AccountType type) {
-        return getAccountType() == type;
+        return this.getAccountType() == type;
     }
 
     /**
@@ -1375,11 +1388,11 @@ public class Account extends StoredObject implements Comparable<Account> {
      * @return true if this account belongs to the supplied group
      */
     public final boolean memberOf(final AccountGroup group) {
-        return getAccountType().getAccountGroup() == group;
+        return this.getAccountType().getAccountGroup() == group;
     }
 
     public String getBankId() {
-        return bankId;
+        return this.bankId;
     }
 
     public void setBankId(final String bankId) {
@@ -1387,7 +1400,7 @@ public class Account extends StoredObject implements Comparable<Account> {
     }
 
     public boolean isExcludedFromBudget() {
-        return excludedFromBudget;
+        return this.excludedFromBudget;
     }
 
     public void setExcludedFromBudget(boolean excludeFromBudget) {
@@ -1401,7 +1414,7 @@ public class Account extends StoredObject implements Comparable<Account> {
      */
     @Nullable
     public AmortizeObject getAmortizeObject() {
-        return amortizeObject;
+        return this.amortizeObject;
     }
 
     void setAmortizeObject(final AmortizeObject amortizeObject) {
@@ -1415,7 +1428,7 @@ public class Account extends StoredObject implements Comparable<Account> {
      * @param value the value. If null, the attribute will be removed
      */
     void setAttribute(@NotNull final String key, @Nullable final String value) {
-        attributesLock.writeLock().lock();
+        this.attributesLock.writeLock().lock();
 
         try {
             if (key.isEmpty()) {
@@ -1423,12 +1436,12 @@ public class Account extends StoredObject implements Comparable<Account> {
             }
 
             if (value == null) {
-                attributes.remove(key);
+                this.attributes.remove(key);
             } else {
-                attributes.put(key, value);
+                this.attributes.put(key, value);
             }
         } finally {
-            attributesLock.writeLock().unlock();
+            this.attributesLock.writeLock().unlock();
         }
     }
 
@@ -1441,16 +1454,16 @@ public class Account extends StoredObject implements Comparable<Account> {
      */
     @Nullable
     String getAttribute(@NotNull final String key) {
-        attributesLock.readLock().lock();
+        this.attributesLock.readLock().lock();
 
         try {
             if (key.isEmpty()) {
                 throw new EngineException("Attribute key may not be empty or null");
             }
 
-            return attributes.get(key);
+            return this.attributes.get(key);
         } finally {
-            attributesLock.readLock().unlock();
+            this.attributesLock.readLock().unlock();
         }
     }
 
@@ -1464,12 +1477,12 @@ public class Account extends StoredObject implements Comparable<Account> {
     private List<Transaction> getCachedSortedTransactionList() {
 
         // Lazy initialization
-        if (cachedSortedTransactionList == null) {
-            cachedSortedTransactionList = new ArrayList<>(transactions);
-            Collections.sort(cachedSortedTransactionList);
+        if (this.cachedSortedTransactionList == null) {
+            this.cachedSortedTransactionList = new ArrayList<>(this.transactions);
+            Collections.sort(this.cachedSortedTransactionList);
         }
 
-        return cachedSortedTransactionList;
+        return this.cachedSortedTransactionList;
     }
 
     /**
@@ -1478,19 +1491,19 @@ public class Account extends StoredObject implements Comparable<Account> {
      * @return Properly initialized Account
      */
     protected Object readResolve() {
-        postLoad();
+        this.postLoad();
         return this;
     }
 
     @PostLoad
     private void postLoad() {
-        transactionLock = new ReentrantReadWriteLock(true);
-        childLock = new ReentrantReadWriteLock(true);
-        securitiesLock = new ReentrantReadWriteLock(true);
-        attributesLock = new ReentrantReadWriteLock(true);
+        this.transactionLock = new ReentrantReadWriteLock(true);
+        this.childLock = new ReentrantReadWriteLock(true);
+        this.securitiesLock = new ReentrantReadWriteLock(true);
+        this.attributesLock = new ReentrantReadWriteLock(true);
 
-        cachedSortedChildren = new ArrayList<>(children);
-        Collections.sort(cachedSortedChildren); // JPA will be naturally sorted, but XML files will not
+        this.cachedSortedChildren = new ArrayList<>(this.children);
+        Collections.sort(this.cachedSortedChildren); // JPA will be naturally sorted, but XML files will not
     }
 
     /**
@@ -1500,7 +1513,8 @@ public class Account extends StoredObject implements Comparable<Account> {
      * @throws java.lang.CloneNotSupportedException will always occur
      */
     @Override
-    public Object clone() throws CloneNotSupportedException {
+    public Object clone()
+        throws CloneNotSupportedException {
         super.clone();
         throw new CloneNotSupportedException("Accounts may not be cloned");
     }

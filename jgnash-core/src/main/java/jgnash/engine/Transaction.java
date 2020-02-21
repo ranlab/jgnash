@@ -45,8 +45,8 @@ import jgnash.util.NotNull;
 import jgnash.util.Nullable;
 
 /**
- * Base class for transactions.  Transaction should be treated as immutable as in not modified if they have
- * been persisted within the database.
+ * Base class for transactions. Transaction should be treated as immutable as
+ * in not modified if they have been persisted within the database.
  *
  * @author Craig Cavanaugh
  */
@@ -116,7 +116,7 @@ public class Transaction extends StoredObject implements Comparable<Transaction>
      * Transaction entries.
      */
     @JoinTable
-    @OneToMany(cascade = {CascadeType.ALL}, fetch = FetchType.EAGER)
+    @OneToMany(cascade = { CascadeType.ALL }, fetch = FetchType.EAGER)
     Set<TransactionEntry> transactionEntries = new HashSet<>();
 
     /**
@@ -137,7 +137,7 @@ public class Transaction extends StoredObject implements Comparable<Transaction>
     public Set<Account> getAccounts() {
         final Set<Account> accounts = new TreeSet<>();
 
-        for (final TransactionEntry e : transactionEntries) {
+        for (final TransactionEntry e : this.transactionEntries) {
             accounts.add(e.getCreditAccount());
             accounts.add(e.getDebitAccount());
         }
@@ -153,7 +153,7 @@ public class Transaction extends StoredObject implements Comparable<Transaction>
     public boolean areAccountsHidden() {
         boolean accountsHidden = false;
 
-        for (final Account account : getAccounts()) {
+        for (final Account account : this.getAccounts()) {
             if (!account.isVisible()) {
                 accountsHidden = true;
                 break;
@@ -171,7 +171,7 @@ public class Transaction extends StoredObject implements Comparable<Transaction>
     public boolean areAccountsLocked() {
         boolean accountsLocked = false;
 
-        for (final Account account : getAccounts()) {
+        for (final Account account : this.getAccounts()) {
             if (account.isLocked()) {
                 accountsLocked = true;
                 break;
@@ -190,10 +190,10 @@ public class Transaction extends StoredObject implements Comparable<Transaction>
     public Account getCommonAccount() {
         Account account = null;
 
-        if (size() >= 2) {
-            for (final Account a : getAccounts()) {
+        if (this.size() >= 2) {
+            for (final Account a : this.getAccounts()) {
                 boolean success = true;
-                for (final TransactionEntry e : transactionEntries) {
+                for (final TransactionEntry e : this.transactionEntries) {
                     if (!e.getCreditAccount().equals(a) && !e.getDebitAccount().equals(a)) {
                         success = false;
                         break;
@@ -205,7 +205,7 @@ public class Transaction extends StoredObject implements Comparable<Transaction>
                 }
             }
         } else { // double entry transaction, return the credit account by default
-            account = transactionEntries.iterator().next().getCreditAccount();
+            account = this.transactionEntries.iterator().next().getCreditAccount();
         }
 
         return account;
@@ -221,17 +221,17 @@ public class Transaction extends StoredObject implements Comparable<Transaction>
     public void addTransactionEntry(@NotNull final TransactionEntry entry) {
         Objects.requireNonNull(entry);
 
-        if (transactionEntries.contains(entry)) {
+        if (this.transactionEntries.contains(entry)) {
             throw new IllegalArgumentException("Duplicate entry is not allowed");
         }
 
-        transactionEntries.add(entry);
+        this.transactionEntries.add(entry);
     }
 
     public void removeTransactionEntry(@NotNull final TransactionEntry entry) {
         Objects.requireNonNull(entry);
 
-        transactionEntries.remove(entry);
+        this.transactionEntries.remove(entry);
     }
 
     /**
@@ -242,7 +242,7 @@ public class Transaction extends StoredObject implements Comparable<Transaction>
      * @see TransactionEntry
      */
     public int size() {
-        return transactionEntries.size();
+        return this.transactionEntries.size();
     }
 
     public void setDate(@NotNull final LocalDate localDate) {
@@ -250,7 +250,7 @@ public class Transaction extends StoredObject implements Comparable<Transaction>
     }
 
     public LocalDate getLocalDate() {
-        return date;
+        return this.date;
     }
 
     /**
@@ -271,8 +271,8 @@ public class Transaction extends StoredObject implements Comparable<Transaction>
     public String getPayee() {
         String result = EMPTY;
 
-        if (payee != null) {
-            result = payee;
+        if (this.payee != null) {
+            result = this.payee;
         }
         return result;
     }
@@ -295,8 +295,8 @@ public class Transaction extends StoredObject implements Comparable<Transaction>
     public String getNumber() {
         String result = EMPTY;
 
-        if (number != null) {
-            result = number;
+        if (this.number != null) {
+            result = this.number;
         }
         return result;
     }
@@ -310,8 +310,10 @@ public class Transaction extends StoredObject implements Comparable<Transaction>
      * @return Amount of this transaction relative to the supplied account
      */
     public synchronized BigDecimal getAmount(final Account account) {
-        return transactionEntries.stream().map(transactionEntry
-                -> transactionEntry.getAmount(account)).reduce(BigDecimal.ZERO, BigDecimal::add);
+        return this.transactionEntries
+            .stream()
+                .map(transactionEntry -> transactionEntry.getAmount(account))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     /**
@@ -329,27 +331,27 @@ public class Transaction extends StoredObject implements Comparable<Transaction>
             return 0;
         }
 
-        int result = date.compareTo(tran.date);
+        int result = this.date.compareTo(tran.date);
         if (result != 0) {
             return result;
         }
 
-        result = getNumber().compareTo(tran.getNumber());
+        result = this.getNumber().compareTo(tran.getNumber());
         if (result != 0) {
             return result;
         }
 
-        result = Long.compareUnsigned(timestamp, tran.timestamp);
+        result = Long.compareUnsigned(this.timestamp, tran.timestamp);
         if (result != 0) {
             return result;
         }
 
-        result = getAmount(getCommonAccount()).compareTo(tran.getAmount(tran.getCommonAccount()));
+        result = this.getAmount(this.getCommonAccount()).compareTo(tran.getAmount(tran.getCommonAccount()));
         if (result != 0) {
             return result;
         }
 
-        return getUuid().compareTo(tran.getUuid());
+        return this.getUuid().compareTo(tran.getUuid());
     }
 
     /**
@@ -360,18 +362,19 @@ public class Transaction extends StoredObject implements Comparable<Transaction>
     public List<TransactionEntry> getTransactionEntries() {
 
         // protect against write through by creating a new ArrayList
-        final List<TransactionEntry> list = new ArrayList<>(transactionEntries);
+        final List<TransactionEntry> list = new ArrayList<>(this.transactionEntries);
         Collections.sort(list);
 
         return list;
     }
 
     private List<TransactionEntry> getTransactionEntries(final Account account) {
-        return transactionEntries.stream()
+        return this.transactionEntries
+            .stream()
                 .filter(transactionEntry -> transactionEntry.getCreditAccount().equals(account)
-                        || transactionEntry.getDebitAccount().equals(account)).collect(Collectors.toList());
+                    || transactionEntry.getDebitAccount().equals(account))
+                .collect(Collectors.toList());
     }
-
 
     /**
      * Return a list of transaction entries with the given tag.
@@ -381,7 +384,7 @@ public class Transaction extends StoredObject implements Comparable<Transaction>
      * returned if none are found
      */
     List<TransactionEntry> getTransactionEntriesByTag(final TransactionTag tag) {
-        return transactionEntries.stream().filter(e -> e.getTransactionTag() == tag).collect(Collectors.toList());
+        return this.transactionEntries.stream().filter(e -> e.getTransactionTag() == tag).collect(Collectors.toList());
     }
 
     /**
@@ -397,21 +400,21 @@ public class Transaction extends StoredObject implements Comparable<Transaction>
      * Clears all transaction entries.
      */
     public void clearTransactionEntries() {
-        transactionEntries.clear();
+        this.transactionEntries.clear();
     }
 
     public LocalDateTime getTimestamp() {
-        if (timeStampDate == null) {
-            timeStampDate = LocalDateTime.ofInstant(Instant.ofEpochMilli(timestamp), ZoneId.systemDefault());
+        if (this.timeStampDate == null) {
+            this.timeStampDate = LocalDateTime.ofInstant(Instant.ofEpochMilli(this.timestamp), ZoneId.systemDefault());
         }
 
-        return timeStampDate;
+        return this.timeStampDate;
     }
 
     @NotNull
     public TransactionType getTransactionType() {
-        if (size() == 1) {
-            final TransactionEntry entry = transactionEntries.iterator().next();
+        if (this.size() == 1) {
+            final TransactionEntry entry = this.transactionEntries.iterator().next();
 
             if (entry.isSingleEntry()) {
                 return TransactionType.SINGLENTRY;
@@ -419,7 +422,7 @@ public class Transaction extends StoredObject implements Comparable<Transaction>
             return TransactionType.DOUBLEENTRY;
         }
 
-        if (size() > 1) {
+        if (this.size() > 1) {
             return TransactionType.SPLITENTRY;
         }
 
@@ -435,17 +438,17 @@ public class Transaction extends StoredObject implements Comparable<Transaction>
      */
     @NotNull
     public synchronized String getMemo() {
-        if (memo != null) {
-            if (isMemoConcatenated()) {
-                if (concatMemo == null) {
-                    concatMemo = getMemo(getTransactionEntries());
+        if (this.memo != null) {
+            if (this.isMemoConcatenated()) {
+                if (this.concatMemo == null) {
+                    this.concatMemo = getMemo(this.getTransactionEntries());
                 }
-                return concatMemo;
+                return this.concatMemo;
             }
 
-            return memo;
+            return this.memo;
         }
-        return getTransactionEntries().get(0).getMemo();
+        return this.getTransactionEntries().get(0).getMemo();
     }
 
     /**
@@ -455,7 +458,7 @@ public class Transaction extends StoredObject implements Comparable<Transaction>
      */
     @Nullable
     public String getTransactionMemo() {
-        return memo;
+        return this.memo;
     }
 
     /**
@@ -466,7 +469,7 @@ public class Transaction extends StoredObject implements Comparable<Transaction>
      */
     @NotNull
     public synchronized String getMemo(@NotNull final Account account) {
-        return getMemo(getTransactionEntries(account));
+        return getMemo(this.getTransactionEntries(account));
     }
 
     /**
@@ -479,15 +482,16 @@ public class Transaction extends StoredObject implements Comparable<Transaction>
         final List<String> memoList = new ArrayList<>();
 
         // Create an ordered list of unique memos that are not empty
-        transEntries.stream().filter(transactionEntry
-                -> !transactionEntry.getMemo().isEmpty() && !memoList.contains(transactionEntry.getMemo()))
+        transEntries
+            .stream()
+                .filter(transactionEntry -> !transactionEntry.getMemo().isEmpty() && !memoList.contains(transactionEntry.getMemo()))
                 .forEachOrdered(transactionEntry -> memoList.add(transactionEntry.getMemo()));
 
         return String.join(", ", memoList);
     }
 
     public boolean isMemoConcatenated() {
-        return CONCATENATE.equals(memo);
+        return CONCATENATE.equals(this.memo);
     }
 
     /**
@@ -500,7 +504,7 @@ public class Transaction extends StoredObject implements Comparable<Transaction>
     public synchronized void setMemo(final String memo) {
 
         // force to null if empty to conserve memory.
-        if (memo != null && memo.isEmpty()) {
+        if ((memo != null) && memo.isEmpty()) {
             this.memo = null;
         } else {
             this.memo = memo;
@@ -515,7 +519,7 @@ public class Transaction extends StoredObject implements Comparable<Transaction>
     public Set<Tag> getTags() {
         final Set<Tag> tags = new HashSet<>();
 
-        for (final TransactionEntry entry : transactionEntries) {
+        for (final TransactionEntry entry : this.transactionEntries) {
             tags.addAll(entry.getTags());
         }
 
@@ -531,7 +535,7 @@ public class Transaction extends StoredObject implements Comparable<Transaction>
     public Set<Tag> getTags(final Account account) {
         final Set<Tag> tags = new HashSet<>();
 
-        for (final TransactionEntry entry : getTransactionEntries(account)) {
+        for (final TransactionEntry entry : this.getTransactionEntries(account)) {
             tags.addAll(entry.getTags());
         }
 
@@ -545,7 +549,7 @@ public class Transaction extends StoredObject implements Comparable<Transaction>
      * @see TransactionEntry#setTags(Collection)
      */
     public void setTags(final Collection<Tag> tags) {
-        for (final TransactionEntry entry : transactionEntries) {
+        for (final TransactionEntry entry : this.transactionEntries) {
             entry.setTags(tags);
         }
     }
@@ -557,7 +561,7 @@ public class Transaction extends StoredObject implements Comparable<Transaction>
      * @see TransactionEntry#setTags(Collection)
      */
     public void setTags(@NotNull final Class<? extends TransactionEntry> clazz, @NotNull final Collection<Tag> tags) {
-        transactionEntries.stream().filter(clazz::isInstance).forEach(e-> e.setTags(tags));
+        this.transactionEntries.stream().filter(clazz::isInstance).forEach(e -> e.setTags(tags));
     }
 
     /**
@@ -567,14 +571,13 @@ public class Transaction extends StoredObject implements Comparable<Transaction>
      */
     public Set<Tag> getTags(@NotNull final Class<? extends TransactionEntry> clazz) {
         final Set<Tag> tags = new HashSet<>();
-        transactionEntries.stream().filter(clazz::isInstance)
-                          .forEach(transactionEntry -> tags.addAll(transactionEntry.getTags()));
+        this.transactionEntries.stream().filter(clazz::isInstance).forEach(transactionEntry -> tags.addAll(transactionEntry.getTags()));
         return tags;
     }
 
     @Nullable
     public String getFitid() {
-        return fitid;
+        return this.fitid;
     }
 
     public void setFitid(final String fitid) {
@@ -586,7 +589,7 @@ public class Transaction extends StoredObject implements Comparable<Transaction>
         Objects.requireNonNull(account);
         Objects.requireNonNull(state);
 
-        for (final TransactionEntry e : transactionEntries) {
+        for (final TransactionEntry e : this.transactionEntries) {
             e.setReconciled(account, state);
         }
     }
@@ -594,7 +597,7 @@ public class Transaction extends StoredObject implements Comparable<Transaction>
     public void setReconciled(@NotNull final ReconciledState state) {
         Objects.requireNonNull(state);
 
-        for (final TransactionEntry e : transactionEntries) {
+        for (final TransactionEntry e : this.transactionEntries) {
             e.setCreditReconciled(state);
             e.setDebitReconciled(state);
         }
@@ -604,7 +607,7 @@ public class Transaction extends StoredObject implements Comparable<Transaction>
     public ReconciledState getReconciled(final Account account) {
         ReconciledState state = ReconciledState.NOT_RECONCILED; // default is not reconciled
 
-        for (final TransactionEntry e : transactionEntries) {
+        for (final TransactionEntry e : this.transactionEntries) {
             if (e.getCreditAccount().equals(account)) {
                 state = e.getCreditReconciled();
                 break;
@@ -626,7 +629,7 @@ public class Transaction extends StoredObject implements Comparable<Transaction>
      */
     @Nullable
     public String getAttachment() {
-        return attachment;
+        return this.attachment;
     }
 
     /**
@@ -640,19 +643,20 @@ public class Transaction extends StoredObject implements Comparable<Transaction>
     }
 
     @Override
-    public Object clone() throws CloneNotSupportedException {
+    public Object clone()
+        throws CloneNotSupportedException {
 
         final Transaction tran = (Transaction) super.clone();
 
         tran.concatMemo = null; // force a reset of the concatenated memo, the entries of the clone may change
 
-        tran.timestamp = System.currentTimeMillis();    // force the clone to have a new timestamp
-        tran.timeStampDate = null;                      // clear the cached value
+        tran.timestamp = System.currentTimeMillis(); // force the clone to have a new timestamp
+        tran.timeStampDate = null; // clear the cached value
 
         // deep clone
         tran.transactionEntries = new HashSet<>(); // deep clone
 
-        for (final TransactionEntry entry : transactionEntries) {
+        for (final TransactionEntry entry : this.transactionEntries) {
             tran.addTransactionEntry((TransactionEntry) entry.clone());
         }
 
@@ -665,14 +669,14 @@ public class Transaction extends StoredObject implements Comparable<Transaction>
 
         final String lineSep = System.getProperty("line.SEPARATOR");
 
-        b.append("Transaction UUID: ").append(getUuid()).append(lineSep);
-        b.append("Number:           ").append(getNumber()).append(lineSep);
-        b.append("Payee:            ").append(getPayee()).append(lineSep);
-        b.append("Memo:             ").append(getMemo()).append(lineSep);
+        b.append("Transaction UUID: ").append(this.getUuid()).append(lineSep);
+        b.append("Number:           ").append(this.getNumber()).append(lineSep);
+        b.append("Payee:            ").append(this.getPayee()).append(lineSep);
+        b.append("Memo:             ").append(this.getMemo()).append(lineSep);
 
         b.append(lineSep);
 
-        for (final TransactionEntry entry : getTransactionEntries()) {
+        for (final TransactionEntry entry : this.getTransactionEntries()) {
             b.append(entry).append(lineSep);
         }
 

@@ -110,7 +110,7 @@ public class TransactionEntry implements Comparable<TransactionEntry>, Cloneable
 
     @JoinTable
     @OrderBy("name")
-    @ManyToMany(cascade = {CascadeType.REFRESH, CascadeType.PERSIST, CascadeType.MERGE}, fetch = FetchType.EAGER)
+    @ManyToMany(cascade = { CascadeType.REFRESH, CascadeType.PERSIST, CascadeType.MERGE }, fetch = FetchType.EAGER)
     private Set<Tag> tags = new HashSet<>();
 
     /**
@@ -129,11 +129,11 @@ public class TransactionEntry implements Comparable<TransactionEntry>, Cloneable
         Objects.requireNonNull(account);
         Objects.requireNonNull(amount);
 
-        creditAccount = account;
-        debitAccount = account;
+        this.creditAccount = account;
+        this.debitAccount = account;
 
-        creditAmount = amount;
-        debitAmount = amount;
+        this.creditAmount = amount;
+        this.debitAmount = amount;
     }
 
     /**
@@ -143,7 +143,7 @@ public class TransactionEntry implements Comparable<TransactionEntry>, Cloneable
      * @param debitAccount  debit account for the transaction
      * @param amount        amount for the transaction
      */
-    TransactionEntry(final Account creditAccount, final Account debitAccount, final BigDecimal amount) {
+    public TransactionEntry(final Account creditAccount, final Account debitAccount, final BigDecimal amount) {
         Objects.requireNonNull(creditAccount);
         Objects.requireNonNull(debitAccount);
         Objects.requireNonNull(amount);
@@ -151,7 +151,7 @@ public class TransactionEntry implements Comparable<TransactionEntry>, Cloneable
         this.creditAccount = creditAccount;
         this.debitAccount = debitAccount;
 
-        setAmount(amount.abs());
+        this.setAmount(amount.abs());
     }
 
     /**
@@ -162,14 +162,14 @@ public class TransactionEntry implements Comparable<TransactionEntry>, Cloneable
      * @param creditAmount  amount for the transaction
      * @param debitAmount   amount for the transaction
      */
-    TransactionEntry(@NotNull final Account creditAccount, @NotNull final Account debitAccount,
-                     @NotNull final BigDecimal creditAmount, @NotNull final BigDecimal debitAmount) {
+    TransactionEntry(@NotNull final Account creditAccount, @NotNull final Account debitAccount, @NotNull final BigDecimal creditAmount,
+        @NotNull final BigDecimal debitAmount) {
         Objects.requireNonNull(creditAccount);
         Objects.requireNonNull(debitAccount);
         Objects.requireNonNull(creditAmount);
         Objects.requireNonNull(debitAmount);
 
-        assert creditAmount.signum() == 1 && debitAmount.signum() == -1;
+        assert (creditAmount.signum() == 1) && (debitAmount.signum() == -1);
 
         this.creditAccount = creditAccount;
         this.debitAccount = debitAccount;
@@ -179,16 +179,16 @@ public class TransactionEntry implements Comparable<TransactionEntry>, Cloneable
     }
 
     public BigDecimal getCreditAmount() {
-        return creditAmount;
+        return this.creditAmount;
     }
 
     public BigDecimal getAmount(@NotNull final Account account) {
         Objects.requireNonNull(account);
 
-        if (account.equals(creditAccount)) {
-            return creditAmount;
-        } else if (account.equals(debitAccount)) {
-            return debitAmount;
+        if (account.equals(this.creditAccount)) {
+            return this.creditAmount;
+        } else if (account.equals(this.debitAccount)) {
+            return this.debitAmount;
         } else {
             return BigDecimal.ZERO;
         }
@@ -206,36 +206,36 @@ public class TransactionEntry implements Comparable<TransactionEntry>, Cloneable
             throw new IllegalArgumentException("Amount must not be negative");
         }
 
-        creditAmount = amount;
-        debitAmount = amount.negate();
+        this.creditAmount = amount;
+        this.debitAmount = amount.negate();
     }
 
     public Account getCreditAccount() {
-        return creditAccount;
+        return this.creditAccount;
     }
 
     ReconciledState getCreditReconciled() {
-        return creditReconciled;
+        return this.creditReconciled;
     }
 
     public Account getDebitAccount() {
-        return debitAccount;
+        return this.debitAccount;
     }
 
     ReconciledState getDebitReconciled() {
-        return debitReconciled;
+        return this.debitReconciled;
     }
 
     @NotNull
     public String getMemo() {
-        return memo;
+        return this.memo;
     }
 
     public ReconciledState getReconciled(final Account account) {
-        if (account == getDebitAccount()) {
-            return debitReconciled;
-        } else if (account == getCreditAccount()) {
-            return creditReconciled;
+        if (account == this.getDebitAccount()) {
+            return this.debitReconciled;
+        } else if (account == this.getCreditAccount()) {
+            return this.creditReconciled;
         }
 
         return ReconciledState.NOT_RECONCILED;
@@ -279,15 +279,15 @@ public class TransactionEntry implements Comparable<TransactionEntry>, Cloneable
     }
 
     public void setReconciled(final Account account, final ReconciledState reconciled) {
-        if (account.equals(getCreditAccount())) {
-            setCreditReconciled(reconciled);
-        } else if (account.equals(getDebitAccount())) {
-            setDebitReconciled(reconciled);
+        if (account.equals(this.getCreditAccount())) {
+            this.setCreditReconciled(reconciled);
+        } else if (account.equals(this.getDebitAccount())) {
+            this.setDebitReconciled(reconciled);
         }
     }
 
     public BigDecimal getDebitAmount() {
-        return debitAmount;
+        return this.debitAmount;
     }
 
     public void setDebitAmount(@NotNull final BigDecimal debitAmount) {
@@ -302,8 +302,8 @@ public class TransactionEntry implements Comparable<TransactionEntry>, Cloneable
     }
 
     public Set<Tag> getTags() {
-        if (tags != null) {
-            return Collections.unmodifiableSet(tags);
+        if (this.tags != null) {
+            return Collections.unmodifiableSet(this.tags);
         }
         return Collections.emptySet();
     }
@@ -315,19 +315,19 @@ public class TransactionEntry implements Comparable<TransactionEntry>, Cloneable
             return 0;
         }
 
-        int result = memo.compareTo(entry.getMemo());
+        int result = this.memo.compareTo(entry.getMemo());
 
         if (result != 0) {
             return result;
         }
 
-        result = transactionTag.compareTo(entry.transactionTag);
+        result = this.transactionTag.compareTo(entry.transactionTag);
 
         if (result != 0) {
             return result;
         }
 
-        if (hashCode() > entry.hashCode()) {
+        if (this.hashCode() > entry.hashCode()) {
             return 1;
         }
         return -1;
@@ -339,7 +339,7 @@ public class TransactionEntry implements Comparable<TransactionEntry>, Cloneable
      * @return {@code true} if this is a single entry TransactionEntry
      */
     boolean isSingleEntry() {
-        return creditAccount.equals(debitAccount) && creditAmount.compareTo(debitAmount) == 0;
+        return this.creditAccount.equals(this.debitAccount) && (this.creditAmount.compareTo(this.debitAmount) == 0);
     }
 
     /**
@@ -351,7 +351,7 @@ public class TransactionEntry implements Comparable<TransactionEntry>, Cloneable
      * @return {@code true} if this is a multi-currency transaction entry
      */
     public boolean isMultiCurrency() {
-        return !creditAccount.getCurrencyNode().equals(debitAccount.getCurrencyNode());
+        return !this.creditAccount.getCurrencyNode().equals(this.debitAccount.getCurrencyNode());
     }
 
     public void setTransactionTag(final TransactionTag transactionTag) {
@@ -362,16 +362,17 @@ public class TransactionEntry implements Comparable<TransactionEntry>, Cloneable
     }
 
     public TransactionTag getTransactionTag() {
-        return transactionTag;
+        return this.transactionTag;
     }
 
     @Override
-    public Object clone() throws CloneNotSupportedException {
+    public Object clone()
+        throws CloneNotSupportedException {
         final TransactionEntry e = (TransactionEntry) super.clone();
 
         // a deep clone for tags is needed for JPA persistence
         e.tags = new HashSet<>();
-        e.tags.addAll(tags);
+        e.tags.addAll(this.tags);
 
         // clones id must be reset
         e.id = 0;
@@ -386,30 +387,37 @@ public class TransactionEntry implements Comparable<TransactionEntry>, Cloneable
             return true;
         }
 
-        if (o == null || getClass() != o.getClass()) {
+        if ((o == null) || (this.getClass() != o.getClass())) {
             return false;
         }
 
         TransactionEntry that = (TransactionEntry) o;
-        return Objects.equals(transactionTag, that.transactionTag) &&
-                       Objects.equals(debitAccount, that.debitAccount) &&
-                       Objects.equals(creditAccount, that.creditAccount) &&
-                       Objects.equals(creditAmount, that.creditAmount) &&
-                       Objects.equals(debitAmount, that.debitAmount) &&
-                       Objects.equals(creditReconciled, that.creditReconciled) &&
-                       Objects.equals(debitReconciled, that.debitReconciled) &&
-                       Objects.equals(memo, that.memo) &&
-                       Objects.equals(tags, that.tags);
+        return Objects.equals(this.transactionTag, that.transactionTag) && Objects.equals(this.debitAccount, that.debitAccount)
+            && Objects.equals(this.creditAccount, that.creditAccount)
+            && Objects.equals(this.creditAmount, that.creditAmount)
+            && Objects.equals(this.debitAmount, that.debitAmount)
+            && Objects.equals(this.creditReconciled, that.creditReconciled)
+            && Objects.equals(this.debitReconciled, that.debitReconciled)
+            && Objects.equals(this.memo, that.memo)
+            && Objects.equals(this.tags, that.tags);
     }
 
     @Override
     public int hashCode() {
-        int h = hash;
+        int h = this.hash;
 
         if (h == 0) {
-            h = Objects.hash(transactionTag, debitAccount, creditAccount, creditAmount, debitAmount,
-                    creditReconciled, debitReconciled, memo, tags);
-            hash = h;
+            h = Objects
+                .hash(this.transactionTag,
+                    this.debitAccount,
+                    this.creditAccount,
+                    this.creditAmount,
+                    this.debitAmount,
+                    this.creditReconciled,
+                    this.debitReconciled,
+                    this.memo,
+                    this.tags);
+            this.hash = h;
         }
         return h;
     }
@@ -420,13 +428,13 @@ public class TransactionEntry implements Comparable<TransactionEntry>, Cloneable
 
         final String lineSep = System.lineSeparator();
 
-        b.append("TransactionEntry hashCode: ").append(hashCode()).append(lineSep);
-        b.append("Tag:            ").append(getTransactionTag().name()).append(lineSep);
-        b.append("Memo:           ").append(getMemo()).append(lineSep);
-        b.append("Debit Account:  ").append(getDebitAccount().getName()).append(lineSep);
-        b.append("Credit Account: ").append(getCreditAccount().getName()).append(lineSep);
-        b.append("Debit Amount:   ").append(getDebitAmount().toPlainString()).append(lineSep);
-        b.append("Credit Amount:  ").append(getCreditAmount().toPlainString()).append(lineSep);
+        b.append("TransactionEntry hashCode: ").append(this.hashCode()).append(lineSep);
+        b.append("Tag:            ").append(this.getTransactionTag().name()).append(lineSep);
+        b.append("Memo:           ").append(this.getMemo()).append(lineSep);
+        b.append("Debit Account:  ").append(this.getDebitAccount().getName()).append(lineSep);
+        b.append("Credit Account: ").append(this.getCreditAccount().getName()).append(lineSep);
+        b.append("Debit Amount:   ").append(this.getDebitAmount().toPlainString()).append(lineSep);
+        b.append("Credit Amount:  ").append(this.getCreditAmount().toPlainString()).append(lineSep);
 
         return b.toString();
     }
