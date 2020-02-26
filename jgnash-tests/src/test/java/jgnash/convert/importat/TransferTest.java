@@ -176,9 +176,29 @@ public class TransferTest {
                 destTrx.setPayee(srcTrx.getPayee());
                 destTrx.setMemo(srcTrx.getMemo());
 
+                if (destEngine.getTransactionNumberList().contains(destTrx.getNumber()) == true) {
+                    // Transaktion ist schon vorhanden
+                    continue;
+                }
+
                 for (jgnash.engine.TransactionEntry srcTrxEntry : srcTrx.getTransactionEntries()) {
-                    jgnash.engine.Account destDebitAcc = this.createAcccount(destEngine, srcTrxEntry.getDebitAccount());
-                    jgnash.engine.Account destCreditAcc = this.createAcccount(destEngine, srcTrxEntry.getCreditAccount());
+                    // Kontrolle etwaiger Unterkonten
+                    jgnash.engine.Account srcDebitAccount = this.adjustAcccount(srcEngine, srcTrxEntry.getDebitAccount());
+                    jgnash.engine.Account srcCreditAccount = this.adjustAcccount(srcEngine, srcTrxEntry.getCreditAccount());
+
+                    //
+                    jgnash.engine.Account destDebitAcc = this.createAcccount(destEngine, srcDebitAccount);
+                    jgnash.engine.Account destCreditAcc = this.createAcccount(destEngine, srcCreditAccount);
+
+                    // Kontrolle der Kontotypen
+                    if (destDebitAcc.getAccountType().equals(destCreditAcc.getAccountType())) {
+                        // Ausgaben werden auf "Giro" gebucht
+                        if (destDebitAcc.getName().equals("Ausgaben")) {
+                            destDebitAcc = destEngine.getAccountByName("Giro");
+                        } else if (destCreditAcc.getName().equals("Ausgaben")) {
+                            destCreditAcc = destEngine.getAccountByName("Giro");
+                        }
+                    }
 
                     final jgnash.engine.TransactionEntry entry = new jgnash.engine.TransactionEntry(destCreditAcc, destDebitAcc,
                         srcTrxEntry.getCreditAmount());
@@ -189,9 +209,6 @@ public class TransferTest {
 
                 destEngine.addTransaction(destTrx);
             }
-
-            //
-            break;
         }
 
         jgnash.engine.EngineFactory.closeEngine(srcEngine.getName());
@@ -233,11 +250,87 @@ public class TransferTest {
         // Einsortieren in die Kontenhierarchie
         if (srcAcc.getParent() == null) {
             // Neuanlage des Accounts in der Wurzel
-            destEngine.addAccount(destEngine.getRootAccount(), srcAcc);
+            destEngine.addAccount(destEngine.getRootAccount(), destAcc);
         } else {
             // Anlage der Accounts bis zur Wurzel
             jgnash.engine.Account destRootAcc = this.createAcccount(destEngine, srcAcc.getParent());
-            destEngine.addAccount(destRootAcc, srcAcc);
+            destEngine.addAccount(destRootAcc, destAcc);
+        }
+
+        java.util.List<jgnash.engine.Account> lstAcc = destEngine.getAccountList();
+        java.lang.String b = java.lang.String.format("%s hat %d Konten", destEngine.getName(), lstAcc.size());
+
+        return destAcc;
+    }
+
+    /**
+     * Für ausgewählte Konten wird ein neues Unterkonto eingeführt
+     *
+     * @param srcEngine
+     * @param newAcc
+     * @return
+     */
+    private jgnash.engine.Account adjustAcccount(jgnash.engine.Engine srcEngine, jgnash.engine.Account newAcc) {
+        jgnash.engine.Account destAcc = newAcc;
+        if (newAcc.getName().equals("Essen")) {
+            destAcc = srcEngine.getAccountByName("Mittagessen");
+            if (destAcc != null) {
+                // Konto existiert schon
+                return destAcc;
+            }
+
+            // Unterkonto "Mittagessen"
+            destAcc = new jgnash.engine.Account(newAcc.getAccountType(), newAcc.getCurrencyNode());
+            destAcc.setName("Mittagessen");
+            destAcc.setDescription("Mittagessen");
+            destAcc.setAccountNumber("");
+            destAcc.setBankId("");
+            destAcc.setAccountCode(0);
+            destAcc.setExcludedFromBudget(false);
+            destAcc.setLocked(false);
+            destAcc.setPlaceHolder(false);
+            destAcc.setVisible(false);
+
+            //
+            srcEngine.addAccount(newAcc, destAcc);
+        } else if (newAcc.getName().equals("Parken")) {
+            destAcc = srcEngine.getAccountByName("Parken");
+            if (destAcc != null) {
+                // Konto existiert schon
+                return destAcc;
+            }
+
+            // Unterkonto Auto?
+            jgnash.engine.Account autoAcc = srcEngine.getAccountByName("Auto");
+            if (autoAcc == null) {
+                autoAcc = new jgnash.engine.Account(jgnash.engine.AccountType.EXPENSE, newAcc.getCurrencyNode());
+                autoAcc.setName("Auto");
+                autoAcc.setDescription("Ausgaben Auto");
+                autoAcc.setAccountNumber("");
+                autoAcc.setBankId("");
+                autoAcc.setAccountCode(0);
+                autoAcc.setExcludedFromBudget(false);
+                autoAcc.setLocked(false);
+                autoAcc.setPlaceHolder(true);
+                autoAcc.setVisible(false);
+
+                jgnash.engine.Account ausgabenAcc = srcEngine.getAccountByName("Ausgaben");
+                srcEngine.addAccount(ausgabenAcc, autoAcc);
+            }
+
+            // Unterkonto Parken
+            destAcc = new jgnash.engine.Account(newAcc.getAccountType(), newAcc.getCurrencyNode());
+            destAcc.setName("Parken");
+            destAcc.setDescription("Ausgaben Parken");
+            destAcc.setAccountNumber("");
+            destAcc.setBankId("");
+            destAcc.setAccountCode(0);
+            destAcc.setExcludedFromBudget(false);
+            destAcc.setLocked(false);
+            destAcc.setPlaceHolder(false);
+            destAcc.setVisible(false);
+
+            srcEngine.addAccount(autoAcc, destAcc);
         }
 
         return destAcc;

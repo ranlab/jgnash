@@ -277,7 +277,7 @@ public class Account extends StoredObject implements Comparable<Account> {
      * @return <tt>true</tt> the transaction was added successful <tt>false</tt> the transaction was already attached
      * to this account
      */
-    boolean addTransaction(final Transaction tran) {
+    boolean addTransaction(final jgnash.engine.Transaction tran) {
         if (this.placeHolder) {
             java.lang.StringBuffer sb = new java.lang.StringBuffer();
             tran.getAccounts().stream().forEach(acc -> sb.append(acc.getName() + " "));
@@ -290,7 +290,7 @@ public class Account extends StoredObject implements Comparable<Account> {
         try {
             boolean result = false;
 
-            if (!this.contains(tran)) {
+            if (this.contains(tran) == false) {
 
                 this.transactions.add(tran);
 

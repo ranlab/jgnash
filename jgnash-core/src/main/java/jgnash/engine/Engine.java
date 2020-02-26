@@ -1710,7 +1710,7 @@ public class Engine {
      *
      * @return List of accounts
      */
-    public java.util.List<Account> getAccountList() {
+    public java.util.List<jgnash.engine.Account> getAccountList() {
         final java.util.List<Account> accounts = this.getAccountDAO().getAccountList();
         accounts.remove(this.getRootAccount());
 
